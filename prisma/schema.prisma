@@ -1,4 +1,5 @@
-// Esquema de Prisma. Los modelos llegan con la funcionalidad 3 (modelo de datos).
+// Esquema de Cafeta (spec 0002, modelo de datos). Las reglas que Prisma no expresa
+// (CHECK, RLS y el trigger de auditoría) viven en SQL dentro de la migración inicial.
 // La URL de conexión vive en prisma.config.ts (Prisma 7 ya no la lee aquí).
 
 generator client {
@@ -10,4 +11,539 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+// ── Enums ──
+
+enum Role {
+  STUDENT
+  ADMIN
+
+  @@map("role")
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+
+  @@map("verification_status")
+}
+
+enum ProfileVisibility {
+  PUBLIC
+  FOLLOWERS
+  PRIVATE
+
+  @@map("profile_visibility")
+}
+
+enum TagCategory {
+  CAREER
+  SKILL
+  INTEREST
+
+  @@map("tag_category")
+}
+
+enum FollowStatus {
+  PENDING
+  ACCEPTED
+
+  @@map("follow_status")
+}
+
+enum PostType {
+  TEXT
+  STUDY_NOTES
+  PDF
+  EVENT
+  CODE
+  STUDY_GROUP
+  ANNOUNCEMENT
+
+  @@map("post_type")
+}
+
+enum ReactionType {
+  HEART
+  FIRE
+  CLAP
+  LAUGH
+  WOW
+
+  @@map("reaction_type")
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  DOCUMENT
+
+  @@map("media_type")
+}
+
+enum ReportTarget {
+  USER
+  POST
+
+  @@map("report_target")
+}
+
+enum ReportReason {
+  SPAM
+  HARASSMENT
+  INAPPROPRIATE
+  IMPERSONATION
+  OTHER
+
+  @@map("report_reason")
+}
+
+enum ReportStatus {
+  PENDING
+  SANCTIONED
+  DISMISSED
+
+  @@map("report_status")
+}
+
+enum NotificationType {
+  POST_REACTION
+  POST_COMMENT
+  STORY_REACTION
+  STORY_COMMENT
+  FOLLOW
+  FOLLOW_REQUEST
+  FOLLOW_ACCEPTED
+  MESSAGE
+  VERIFICATION_RESULT
+
+  @@map("notification_type")
+}
+
+// ── Cuenta e identidad ──
+
+model User {
+  id                 String             @id @default(uuid(7)) @db.Uuid
+  email              String             @unique @db.VarChar(254)
+  passwordHash       String             @map("password_hash") @db.VarChar(100)
+  role               Role               @default(STUDENT)
+  verificationStatus VerificationStatus @default(PENDING) @map("verification_status")
+  verifiedAt         DateTime?          @map("verified_at") @db.Timestamptz(3)
+  termsAcceptedAt    DateTime?          @map("terms_accepted_at") @db.Timestamptz(3)
+  termsVersion       String?            @map("terms_version") @db.VarChar(20)
+  deactivatedAt      DateTime?          @map("deactivated_at") @db.Timestamptz(3)
+  createdAt          DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  profile                Profile?
+  notificationPreference NotificationPreference?
+  following              Follow[]                @relation("FollowFollower")
+  followers              Follow[]                @relation("FollowFollowing")
+  blocksMade             Block[]                 @relation("BlockBlocker")
+  blocksReceived         Block[]                 @relation("BlockBlocked")
+  posts                  Post[]
+  postReactions          PostReaction[]
+  postComments           PostComment[]
+  savedPosts             SavedPost[]
+  stories                Story[]
+  storyReactions         StoryReaction[]
+  storyComments          StoryComment[]
+  conversationsAsA       Conversation[]          @relation("ConversationUserA")
+  conversationsAsB       Conversation[]          @relation("ConversationUserB")
+  messagesSent           Message[]
+  notificationsReceived  Notification[]          @relation("NotificationRecipient")
+  notificationsCaused    Notification[]          @relation("NotificationActor")
+  reportsMade            Report[]                @relation("ReportReporter")
+  reportsAgainst         Report[]                @relation("ReportTargetUser")
+  reportsResolved        Report[]                @relation("ReportResolver")
+  auditLogs              AuditLog[]
+
+  @@index([createdAt])
+  @@map("users")
+}
+
+model Profile {
+  userId      String            @id @map("user_id") @db.Uuid
+  handle      String            @unique @db.VarChar(30)
+  displayName String            @map("display_name") @db.VarChar(60)
+  bio         String?           @db.VarChar(160)
+  careerId    String?           @map("career_id") @db.Uuid
+  avatarKey   String?           @map("avatar_key") @db.VarChar(255)
+  location    String?           @db.VarChar(120)
+  visibility  ProfileVisibility @default(PUBLIC)
+  createdAt   DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user   User         @relation(fields: [userId], references: [id], onDelete: Restrict)
+  career Career?      @relation(fields: [careerId], references: [id], onDelete: Restrict)
+  tags   ProfileTag[]
+
+  @@index([careerId])
+  @@map("profiles")
+}
+
+model Career {
+  id            String    @id @default(uuid(7)) @db.Uuid
+  name          String    @unique @db.VarChar(120)
+  deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(3)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  profiles Profile[]
+
+  @@map("careers")
+}
+
+model ProfileTag {
+  id        String      @id @default(uuid(7)) @db.Uuid
+  profileId String      @map("profile_id") @db.Uuid
+  label     String      @db.VarChar(40)
+  category  TagCategory
+  position  Int
+  createdAt DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  profile Profile @relation(fields: [profileId], references: [userId], onDelete: Cascade)
+
+  @@unique([profileId, label])
+  @@map("profile_tags")
+}
+
+model NotificationPreference {
+  userId    String   @id @map("user_id") @db.Uuid
+  reactions Boolean  @default(true)
+  comments  Boolean  @default(true)
+  follows   Boolean  @default(true)
+  messages  Boolean  @default(true)
+  stories   Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@map("notification_preferences")
+}
+
+// ── Red social ──
+
+model Follow {
+  id            String       @id @default(uuid(7)) @db.Uuid
+  followerId    String       @map("follower_id") @db.Uuid
+  followingId   String       @map("following_id") @db.Uuid
+  status        FollowStatus
+  respondedAt   DateTime?    @map("responded_at") @db.Timestamptz(3)
+  deactivatedAt DateTime?    @map("deactivated_at") @db.Timestamptz(3)
+  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  follower  User @relation("FollowFollower", fields: [followerId], references: [id], onDelete: Restrict)
+  following User @relation("FollowFollowing", fields: [followingId], references: [id], onDelete: Restrict)
+
+  @@unique([followerId, followingId])
+  @@index([followingId, status])
+  @@index([followerId, status])
+  @@map("follows")
+}
+
+model Block {
+  id            String    @id @default(uuid(7)) @db.Uuid
+  blockerId     String    @map("blocker_id") @db.Uuid
+  blockedId     String    @map("blocked_id") @db.Uuid
+  deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(3)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  blocker User @relation("BlockBlocker", fields: [blockerId], references: [id], onDelete: Restrict)
+  blocked User @relation("BlockBlocked", fields: [blockedId], references: [id], onDelete: Restrict)
+
+  @@unique([blockerId, blockedId])
+  @@index([blockedId])
+  @@map("blocks")
+}
+
+// ── Publicaciones ──
+
+model Post {
+  id            String    @id @default(uuid(7)) @db.Uuid
+  authorId      String    @map("author_id") @db.Uuid
+  type          PostType  @default(TEXT)
+  content       String?   @db.VarChar(2000)
+  location      String?   @db.VarChar(120)
+  eventStartsAt DateTime? @map("event_starts_at") @db.Timestamptz(3)
+  eventLocation String?   @map("event_location") @db.VarChar(120)
+  codeSnippet   String?   @map("code_snippet") @db.Text
+  groupName     String?   @map("group_name") @db.VarChar(80)
+  groupSpots    Int?      @map("group_spots")
+  editedAt      DateTime? @map("edited_at") @db.Timestamptz(3)
+  archivedAt    DateTime? @map("archived_at") @db.Timestamptz(3)
+  deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(3)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  author        User           @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  media         PostMedia[]
+  reactions     PostReaction[]
+  comments      PostComment[]
+  savedBy       SavedPost[]
+  notifications Notification[]
+  reports       Report[]
+
+  @@index([authorId, createdAt(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
+  @@index([type, createdAt(sort: Desc)])
+  @@map("posts")
+}
+
+model PostMedia {
+  id           String    @id @default(uuid(7)) @db.Uuid
+  postId       String    @map("post_id") @db.Uuid
+  storageKey   String    @map("storage_key") @db.VarChar(255)
+  mediaType    MediaType @map("media_type")
+  mimeType     String    @map("mime_type") @db.VarChar(100)
+  sizeBytes    Int       @map("size_bytes")
+  originalName String?   @map("original_name") @db.VarChar(255)
+  position     Int
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, position])
+  @@map("post_media")
+}
+
+model PostReaction {
+  id            String       @id @default(uuid(7)) @db.Uuid
+  postId        String       @map("post_id") @db.Uuid
+  userId        String       @map("user_id") @db.Uuid
+  type          ReactionType
+  deactivatedAt DateTime?    @map("deactivated_at") @db.Timestamptz(3)
+  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([postId, userId])
+  @@index([userId])
+  @@map("post_reactions")
+}
+
+model PostComment {
+  id            String    @id @default(uuid(7)) @db.Uuid
+  postId        String    @map("post_id") @db.Uuid
+  authorId      String    @map("author_id") @db.Uuid
+  content       String    @db.VarChar(500)
+  editedAt      DateTime? @map("edited_at") @db.Timestamptz(3)
+  deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(3)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([postId, createdAt])
+  @@index([authorId])
+  @@map("post_comments")
+}
+
+model SavedPost {
+  id            String    @id @default(uuid(7)) @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
+  postId        String    @map("post_id") @db.Uuid
+  deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(3)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@index([postId])
+  @@map("saved_posts")
+}
+
+// ── Historias ──
+
+model Story {
+  id            String     @id @default(uuid(7)) @db.Uuid
+  authorId      String     @map("author_id") @db.Uuid
+  text          String?    @db.VarChar(280)
+  mediaKey      String?    @map("media_key") @db.VarChar(255)
+  mediaType     MediaType? @map("media_type")
+  mediaMimeType String?    @map("media_mime_type") @db.VarChar(100)
+  expiresAt     DateTime   @map("expires_at") @db.Timestamptz(3)
+  editedAt      DateTime?  @map("edited_at") @db.Timestamptz(3)
+  deactivatedAt DateTime?  @map("deactivated_at") @db.Timestamptz(3)
+  createdAt     DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime   @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  author        User            @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  reactions     StoryReaction[]
+  comments      StoryComment[]
+  notifications Notification[]
+
+  @@index([authorId, expiresAt])
+  @@index([expiresAt])
+  @@map("stories")
+}
+
+model StoryReaction {
+  id            String       @id @default(uuid(7)) @db.Uuid
+  storyId       String       @map("story_id") @db.Uuid
+  userId        String       @map("user_id") @db.Uuid
+  type          ReactionType
+  deactivatedAt DateTime?    @map("deactivated_at") @db.Timestamptz(3)
+  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([storyId, userId])
+  @@index([userId])
+  @@map("story_reactions")
+}
+
+model StoryComment {
+  id            String    @id @default(uuid(7)) @db.Uuid
+  storyId       String    @map("story_id") @db.Uuid
+  authorId      String    @map("author_id") @db.Uuid
+  content       String    @db.VarChar(500)
+  editedAt      DateTime? @map("edited_at") @db.Timestamptz(3)
+  deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(3)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  story  Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  author User  @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([storyId, createdAt])
+  @@index([authorId])
+  @@map("story_comments")
+}
+
+// ── Mensajería y notificaciones ──
+
+model Conversation {
+  id              String    @id @default(uuid(7)) @db.Uuid
+  userAId         String    @map("user_a_id") @db.Uuid
+  userBId         String    @map("user_b_id") @db.Uuid
+  userALastReadAt DateTime? @map("user_a_last_read_at") @db.Timestamptz(3)
+  userBLastReadAt DateTime? @map("user_b_last_read_at") @db.Timestamptz(3)
+  lastMessageAt   DateTime? @map("last_message_at") @db.Timestamptz(3)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  userA         User           @relation("ConversationUserA", fields: [userAId], references: [id], onDelete: Restrict)
+  userB         User           @relation("ConversationUserB", fields: [userBId], references: [id], onDelete: Restrict)
+  messages      Message[]
+  notifications Notification[]
+
+  @@unique([userAId, userBId])
+  @@index([userBId])
+  @@index([lastMessageAt(sort: Desc)])
+  @@map("conversations")
+}
+
+model Message {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  conversationId String    @map("conversation_id") @db.Uuid
+  senderId       String    @map("sender_id") @db.Uuid
+  content        String    @db.VarChar(2000)
+  editedAt       DateTime? @map("edited_at") @db.Timestamptz(3)
+  deactivatedAt  DateTime? @map("deactivated_at") @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Restrict)
+  sender       User         @relation(fields: [senderId], references: [id], onDelete: Restrict)
+
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+  @@map("messages")
+}
+
+model Notification {
+  id             String           @id @default(uuid(7)) @db.Uuid
+  recipientId    String           @map("recipient_id") @db.Uuid
+  actorId        String?          @map("actor_id") @db.Uuid
+  type           NotificationType
+  postId         String?          @map("post_id") @db.Uuid
+  storyId        String?          @map("story_id") @db.Uuid
+  conversationId String?          @map("conversation_id") @db.Uuid
+  readAt         DateTime?        @map("read_at") @db.Timestamptz(3)
+  deactivatedAt  DateTime?        @map("deactivated_at") @db.Timestamptz(3)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  recipient    User          @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Restrict)
+  actor        User?         @relation("NotificationActor", fields: [actorId], references: [id], onDelete: Restrict)
+  post         Post?         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  story        Story?        @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  conversation Conversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([recipientId, createdAt(sort: Desc)])
+  @@index([recipientId, readAt])
+  @@index([actorId])
+  @@index([postId])
+  @@index([storyId])
+  @@index([conversationId])
+  @@map("notifications")
+}
+
+// ── Moderación y auditoría ──
+
+model Report {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  reporterId     String       @map("reporter_id") @db.Uuid
+  targetType     ReportTarget @map("target_type")
+  targetUserId   String?      @map("target_user_id") @db.Uuid
+  targetPostId   String?      @map("target_post_id") @db.Uuid
+  targetSnapshot String?      @map("target_snapshot") @db.VarChar(2000)
+  reason         ReportReason
+  details        String?      @db.VarChar(500)
+  status         ReportStatus @default(PENDING)
+  pendingKey     String?      @map("pending_key") @db.VarChar(80)
+  resolvedById   String?      @map("resolved_by_id") @db.Uuid
+  resolvedAt     DateTime?    @map("resolved_at") @db.Timestamptz(3)
+  resolutionNote String?      @map("resolution_note") @db.VarChar(500)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  reporter   User  @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: Restrict)
+  targetUser User? @relation("ReportTargetUser", fields: [targetUserId], references: [id], onDelete: Restrict)
+  targetPost Post? @relation(fields: [targetPostId], references: [id], onDelete: SetNull)
+  resolvedBy User? @relation("ReportResolver", fields: [resolvedById], references: [id], onDelete: Restrict)
+
+  @@unique([reporterId, pendingKey])
+  @@index([status, createdAt])
+  @@index([targetUserId])
+  @@index([targetPostId])
+  @@index([resolvedById])
+  @@map("reports")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  actorId    String?  @map("actor_id") @db.Uuid
+  actorRole  Role?    @map("actor_role")
+  action     String   @db.VarChar(60)
+  entityType String   @map("entity_type") @db.VarChar(40)
+  entityId   String?  @map("entity_id") @db.Uuid
+  succeeded  Boolean
+  metadata   Json?
+  ip         String?  @db.VarChar(45)
+  userAgent  String?  @map("user_agent") @db.VarChar(255)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([createdAt(sort: Desc)])
+  @@index([actorId, createdAt(sort: Desc)])
+  @@index([action, createdAt(sort: Desc)])
+  @@index([entityType, entityId])
+  @@map("audit_logs")
 }

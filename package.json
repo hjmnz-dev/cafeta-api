@@ -25,6 +25,7 @@
     "db:down": "docker compose down",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
+    "db:seed": "prisma db seed",
     "typecheck": "tsc --noEmit",
     "format:check": "prettier --check .",
     "prepare": "husky"
@@ -52,6 +53,7 @@
     "@types/node": "^24.0.0",
     "@types/supertest": "^7.0.0",
     "@vitest/coverage-v8": "^4.1.2",
+    "bcryptjs": "^3.0.3",
     "dotenv": "^18.0.3",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
@@ -60,6 +62,7 @@
     "prisma": "^7.10.0",
     "source-map-support": "^0.5.21",
     "supertest": "^7.0.0",
+    "tsx": "^4.23.15",
     "typescript": "^6.0.2",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^4.1.2"

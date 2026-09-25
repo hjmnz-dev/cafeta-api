@@ -15,6 +15,9 @@ export class PrismaService extends PrismaClient implements OnModuleDestroy {
         max: 5,
         connectionTimeoutMillis: 5_000,
       }),
+      // El hash nunca sale en una consulta por defecto; solo auth lo pide
+      // con `omit: { passwordHash: false }` (spec 0002).
+      omit: { user: { passwordHash: true } },
     });
   }
 
