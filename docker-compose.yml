@@ -1,0 +1,22 @@
+# PostgreSQL local: base `cafeta` (desarrollo) y `cafeta_test` (pruebas e2e).
+# Arranca con: npm run db:up
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: cafeta
+      POSTGRES_PASSWORD: cafeta
+      POSTGRES_DB: cafeta
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U cafeta -d cafeta']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:

@@ -1,0 +1,13 @@
+// Esquema de Prisma. Los modelos llegan con la funcionalidad 3 (modelo de datos).
+// La URL de conexión vive en prisma.config.ts (Prisma 7 ya no la lee aquí).
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
