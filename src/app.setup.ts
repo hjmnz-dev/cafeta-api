@@ -1,9 +1,8 @@
-import { ValidationPipe } from '@nestjs/common';
+import { BadRequestException, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
-import { HttpExceptionFilter } from './common/filters/http-exception.filter.js';
 import type { EnvironmentVariables } from './config/env.validation.js';
 
 // Configuración HTTP común. La usan main.ts y las pruebas e2e,
@@ -31,9 +30,15 @@ export function configureApp(app: NestExpressApplication): void {
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
+      // Todo error de validación sale con un code estable (spec 0003).
+      exceptionFactory: (errors) =>
+        new BadRequestException({
+          message: errors.flatMap((e) => Object.values(e.constraints ?? {})),
+          code: 'VALIDATION_ERROR',
+        }),
     }),
   );
-  app.useGlobalFilters(new HttpExceptionFilter());
+  // El filtro de errores se registra como APP_FILTER en AppModule (usa AuditService).
 
   const document = SwaggerModule.createDocument(
     app,
