@@ -1,2 +1,4 @@
 src/generated
 dist
+coverage
+package-lock.json
