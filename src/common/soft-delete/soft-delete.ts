@@ -7,9 +7,19 @@ export const ACTIVE_AUTHOR = { author: ACTIVE } as const;
 
 export type StateChange = 'deactivate' | 'reactivate';
 
+// Un solo tipo para los dos casos: así Prisma lo acepta en cualquier updateMany.
+export interface StateChangeArgs {
+  where: { id: string; deactivatedAt: null | { not: null } };
+  data: { deactivatedAt: Date | null };
+}
+
 // where y data del updateMany condicional: la condición sobre deactivatedAt
 // hace que dos peticiones simultáneas no puedan ganar las dos.
-export function stateChangeArgs(id: string, change: StateChange, now: Date) {
+export function stateChangeArgs(
+  id: string,
+  change: StateChange,
+  now: Date,
+): StateChangeArgs {
   return change === 'deactivate'
     ? { where: { id, deactivatedAt: null }, data: { deactivatedAt: now } }
     : {
