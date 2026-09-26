@@ -216,6 +216,56 @@ describe('Auth (e2e)', () => {
     ).toBe(1);
   });
 
+  it('AC-8: cerrar sesión solo revoca esa sesión, no las otras del usuario', async () => {
+    const { body: first } = await register().expect(201);
+    const { body: second } = await login(
+      'cgomez@est.intec.edu.do',
+      PASSWORD,
+    ).expect(200);
+    await request(server)
+      .post('/api/v1/auth/logout')
+      .set('Authorization', `Bearer ${first.accessToken}`)
+      .expect(204);
+    await me(second.accessToken).expect(200);
+  });
+
+  it('AC-8: cerrar sesión dos veces con el mismo token responde SESSION_REVOKED', async () => {
+    const { body } = await register().expect(201);
+    const logout = () =>
+      request(server)
+        .post('/api/v1/auth/logout')
+        .set('Authorization', `Bearer ${body.accessToken}`);
+    await logout().expect(204);
+    const again = await logout().expect(401);
+    expect(again.body.code).toBe('SESSION_REVOKED');
+  });
+
+  it('AC-9: cerrar sesión sin token responde UNAUTHORIZED', async () => {
+    const res = await request(server).post('/api/v1/auth/logout').expect(401);
+    expect(res.body.code).toBe('UNAUTHORIZED');
+  });
+
+  it('AC-12: ni el login ni /auth/me devuelven el hash de la contraseña', async () => {
+    await register().expect(201);
+    const res = await login('cgomez@est.intec.edu.do', PASSWORD).expect(200);
+    const current = await me(res.body.accessToken).expect(200);
+    for (const body of [res.body, current.body]) {
+      expect(JSON.stringify(body)).not.toMatch(/passwordHash|\$2[ab]\$/);
+    }
+  });
+
+  it('AC-5: "remember" que no es booleano responde VALIDATION_ERROR', async () => {
+    const res = await request(server)
+      .post('/api/v1/auth/login')
+      .send({
+        email: 'cgomez@est.intec.edu.do',
+        password: PASSWORD,
+        remember: 'si',
+      })
+      .expect(400);
+    expect(res.body.code).toBe('VALIDATION_ERROR');
+  });
+
   it('AC-9: rutas protegidas sin token y rutas públicas sin token', async () => {
     expect((await me().expect(401)).body.code).toBe('UNAUTHORIZED');
     expect((await me('no-es-un-jwt').expect(401)).body.code).toBe(
