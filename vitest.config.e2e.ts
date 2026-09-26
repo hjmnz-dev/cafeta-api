@@ -7,5 +7,7 @@ export default defineConfig({
     globals: true,
     root: './',
     include: ['**/*.e2e-spec.ts'],
+    // Las e2e comparten cafeta_test y la limpian con TRUNCATE: una a la vez.
+    fileParallelism: false,
   },
 });

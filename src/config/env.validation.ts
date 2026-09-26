@@ -61,6 +61,18 @@ export class EnvironmentVariables {
     },
   )
   ADMIN_ORIGIN: string;
+
+  // Dominios institucionales para registrarse (spec 0004), separados por comas.
+  @Matches(/^[a-z0-9.-]+(,[a-z0-9.-]+)*$/, {
+    message:
+      'ALLOWED_EMAIL_DOMAINS debe ser una lista de dominios separados por comas',
+  })
+  ALLOWED_EMAIL_DOMAINS: string = 'est.intec.edu.do,intec.edu.do';
+
+  // Intentos por minuto por IP en registro y login (spec 0004).
+  @IsInt()
+  @Min(1)
+  AUTH_RATE_LIMIT: number = 5;
 }
 
 // Si falta una variable o es inválida, la API no arranca y dice cuál.

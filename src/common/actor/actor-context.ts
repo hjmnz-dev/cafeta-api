@@ -9,8 +9,9 @@ export interface ActorContext {
   userAgent: string | null;
 }
 
-// Usuario autenticado que deja el guard JWT en req.user (funcionalidad 6).
+// Usuario autenticado que deja el guard JWT en req.user (spec 0004).
 export interface AuthenticatedUser {
   id: string;
   role: Role;
+  sessionId: string;
 }
