@@ -6,6 +6,8 @@ export default defineConfig({
   schema: 'prisma/schema.prisma',
   migrations: {
     path: 'prisma/migrations',
+    // Prisma 7 ya no siembra solo tras `migrate dev`: se corre con `npm run db:seed`.
+    seed: 'tsx prisma/seed.ts',
   },
   datasource: {
     // Las migraciones usan DIRECT_URL. Se lee sin env() para que
