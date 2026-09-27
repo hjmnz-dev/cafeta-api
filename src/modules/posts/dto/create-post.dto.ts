@@ -16,8 +16,9 @@ const MaxCodePoints = (max: number) =>
     name: 'maxCodePoints',
     constraints: [max],
     validator: {
+      // Solo mide textos: si no es texto, el error es de @IsString y no de largo.
       validate: (value: unknown) =>
-        typeof value === 'string' && codePoints(value.trim()) <= max,
+        typeof value !== 'string' || codePoints(value.trim()) <= max,
       defaultMessage: () => `content debe tener como máximo ${max} caracteres`,
     },
   });
