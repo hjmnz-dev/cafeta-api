@@ -1,0 +1,43 @@
+import type { PostPageDto } from './dto/post-page.dto.js';
+import type { PostViewDto } from './dto/post-view.dto.js';
+import type { PostViewRow } from './post-queries.js';
+
+const iso = (date: Date | null): string | null => date?.toISOString() ?? null;
+
+// Fila de Prisma → vista pública. No expone correo, rol ni nada más de users.
+export function toPostView(row: PostViewRow): PostViewDto {
+  const profile = row.author.profile;
+  return {
+    id: row.id,
+    type: row.type,
+    content: row.content,
+    location: row.location,
+    createdAt: row.createdAt.toISOString(),
+    editedAt: iso(row.editedAt),
+    eventStartsAt: iso(row.eventStartsAt),
+    eventLocation: row.eventLocation,
+    codeSnippet: row.codeSnippet,
+    groupName: row.groupName,
+    groupSpots: row.groupSpots,
+    author: {
+      id: row.author.id,
+      handle: profile?.handle ?? '',
+      displayName: profile?.displayName ?? '',
+      careerName: profile?.career?.name ?? null,
+      verified: row.author.verificationStatus === 'VERIFIED',
+    },
+    reactionCount: row._count.reactions,
+    commentCount: row._count.comments,
+  };
+}
+
+// Se piden limit + 1 filas: si llegó la extra, hay otra página y el cursor es
+// el id de la última que se devuelve.
+export function toPostPage(rows: PostViewRow[], limit: number): PostPageDto {
+  const items = rows.slice(0, limit);
+  const last = items.at(-1);
+  return {
+    items: items.map(toPostView),
+    nextCursor: rows.length > limit && last ? last.id : null,
+  };
+}

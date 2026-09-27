@@ -73,6 +73,11 @@ export class EnvironmentVariables {
   @IsInt()
   @Min(1)
   AUTH_RATE_LIMIT: number = 5;
+
+  // Publicaciones por minuto por usuario (spec 0005).
+  @IsInt()
+  @Min(1)
+  POST_RATE_LIMIT: number = 10;
 }
 
 // Si falta una variable o es inválida, la API no arranca y dice cuál.
