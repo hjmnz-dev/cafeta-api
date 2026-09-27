@@ -8,6 +8,8 @@ import { AuditModule } from './common/audit/audit.module.js';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { CareersModule } from './modules/careers/careers.module.js';
+import { PostsModule } from './modules/posts/posts.module.js';
+import { RateLimitModule } from './common/rate-limit/rate-limit.module.js';
 
 @Module({
   imports: [
@@ -19,9 +21,11 @@ import { CareersModule } from './modules/careers/careers.module.js';
     }),
     PrismaModule,
     AuditModule,
+    RateLimitModule,
     HealthModule,
     CareersModule,
     AuthModule,
+    PostsModule,
   ],
   providers: [{ provide: APP_FILTER, useClass: HttpExceptionFilter }],
 })

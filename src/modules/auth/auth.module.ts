@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
-import { ThrottlerModule } from '@nestjs/throttler';
 import { AuditModule } from '../../common/audit/audit.module.js';
 import type { EnvironmentVariables } from '../../config/env.validation.js';
 import { CareersModule } from '../careers/careers.module.js';
@@ -23,13 +22,6 @@ import { SessionsService } from './sessions.service.js';
         secret: config.get('JWT_SECRET', { infer: true }),
         signOptions: { algorithm: 'HS256' },
       }),
-    }),
-    // Límite de intentos solo para registro y login (ThrottlerGuard por ruta).
-    ThrottlerModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (config: ConfigService<EnvironmentVariables, true>) => [
-        { ttl: 60_000, limit: config.get('AUTH_RATE_LIMIT', { infer: true }) },
-      ],
     }),
   ],
   controllers: [AuthController],

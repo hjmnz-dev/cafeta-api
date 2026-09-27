@@ -7,7 +7,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { ThrottlerGuard } from '@nestjs/throttler';
+import { SkipThrottle, ThrottlerGuard } from '@nestjs/throttler';
 import { Actor } from '../../common/actor/actor.decorator.js';
 import type {
   ActorContext,
@@ -27,6 +27,7 @@ export class AuthController {
 
   @Public()
   @UseGuards(ThrottlerGuard)
+  @SkipThrottle({ posts: true })
   @Post('register')
   register(
     @Body() dto: RegisterDto,
@@ -37,6 +38,7 @@ export class AuthController {
 
   @Public()
   @UseGuards(ThrottlerGuard)
+  @SkipThrottle({ posts: true })
   @Post('login')
   @HttpCode(200)
   login(
