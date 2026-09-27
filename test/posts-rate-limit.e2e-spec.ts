@@ -5,9 +5,12 @@ import type { App } from 'supertest/types.js';
 import type { PrismaService } from '../src/prisma/prisma.service.js';
 import { resetDb } from './support/reset-db.js';
 
-// AC-12 (spec 0005): límite de publicaciones por usuario. Igual que en
-// auth-rate-limit.e2e-spec.ts, el límite se fija antes de importar AppModule.
-const LIMIT = 2;
+// AC-12 (spec 0005): límite de publicaciones por usuario, separado del de auth
+// por IP. Igual que en auth-rate-limit.e2e-spec.ts, los límites se fijan antes
+// de importar AppModule. El de publicaciones es mayor que el de auth a
+// propósito: si publicar pasara por el límite de auth, se cortaría antes.
+const POST_LIMIT = 5;
+const AUTH_LIMIT = 3;
 const PASSWORD = 'clave-segura-2026';
 const SHARED_IP = '198.51.100.7';
 
@@ -16,10 +19,14 @@ describe('Límite de publicaciones (e2e)', () => {
   let server: App;
   let prisma: PrismaService;
   let careerId: string;
-  const previous = process.env.POST_RATE_LIMIT;
+  const previous = {
+    post: process.env.POST_RATE_LIMIT,
+    auth: process.env.AUTH_RATE_LIMIT,
+  };
 
   beforeAll(async () => {
-    process.env.POST_RATE_LIMIT = String(LIMIT);
+    process.env.POST_RATE_LIMIT = String(POST_LIMIT);
+    process.env.AUTH_RATE_LIMIT = String(AUTH_LIMIT);
     const { AppModule } = await import('../src/app.module.js');
     const { configureApp } = await import('../src/app.setup.js');
     const { PrismaService } = await import('../src/prisma/prisma.service.js');
@@ -39,8 +46,12 @@ describe('Límite de publicaciones (e2e)', () => {
 
   afterAll(async () => {
     await app.close();
-    if (previous === undefined) delete process.env.POST_RATE_LIMIT;
-    else process.env.POST_RATE_LIMIT = previous;
+    const restore = (name: string, value: string | undefined) => {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    };
+    restore('POST_RATE_LIMIT', previous.post);
+    restore('AUTH_RATE_LIMIT', previous.auth);
   });
 
   const signUp = async (handle: string): Promise<string> => {
@@ -67,11 +78,18 @@ describe('Límite de publicaciones (e2e)', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({ content: 'Hola' });
 
+  const login = () =>
+    request(server)
+      .post('/api/v1/auth/login')
+      .set('X-Forwarded-For', SHARED_IP)
+      .send({ email: 'ana@est.intec.edu.do', password: PASSWORD });
+
   it('AC-12: la publicación de más en un minuto da 429 solo a ese usuario, aunque compartan IP', async () => {
     const ana = await signUp('ana');
     const beto = await signUp('beto');
 
-    for (let i = 0; i < LIMIT; i++) await publish(ana).expect(201);
+    // Más publicaciones que el límite de auth: publicar no usa ese límite.
+    for (let i = 0; i < POST_LIMIT; i++) await publish(ana).expect(201);
     const blocked = await publish(ana).expect(429);
     expect(blocked.body).toMatchObject({
       statusCode: 429,
@@ -79,16 +97,13 @@ describe('Límite de publicaciones (e2e)', () => {
     });
 
     await publish(beto).expect(201);
-    expect(await prisma.post.count()).toBe(LIMIT + 1);
+    expect(await prisma.post.count()).toBe(POST_LIMIT + 1);
   });
 
-  it('AC-12: publicar no consume el límite de login, y login conserva el suyo por IP', async () => {
-    // .env.test deja AUTH_RATE_LIMIT en 1000: el login desde la IP compartida
-    // sigue entrando aunque esa IP ya publicó y se registró.
-    const res = await request(server)
-      .post('/api/v1/auth/login')
-      .set('X-Forwarded-For', SHARED_IP)
-      .send({ email: 'ana@est.intec.edu.do', password: PASSWORD });
-    expect(res.status).toBe(200);
+  it('AC-12: el login conserva su propio límite por IP, sin gastar el de publicar', async () => {
+    // La IP compartida ya publicó 7 veces: el login igual tiene sus 3 intentos.
+    for (let i = 0; i < AUTH_LIMIT; i++) await login().expect(200);
+    const blocked = await login().expect(429);
+    expect(blocked.body.code).toBe('TOO_MANY_REQUESTS');
   });
 });
