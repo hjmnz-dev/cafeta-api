@@ -11,6 +11,7 @@ import {
   Post,
 } from '@nestjs/common';
 import { Actor } from '../../src/common/actor/actor.decorator.js';
+import { Public } from '../../src/common/decorators/public.decorator.js';
 import type { ActorContext } from '../../src/common/actor/actor-context.js';
 import { AdminReasonDto } from '../../src/common/audit/admin-reason.dto.js';
 import { AuditModule } from '../../src/common/audit/audit.module.js';
@@ -68,6 +69,8 @@ class ProbeCareersService {
   }
 }
 
+// Pública: prueba el mecanismo de auditoría sin depender de auth.
+@Public()
 @Controller('__probe__')
 class ProbeController {
   constructor(private readonly careers: ProbeCareersService) {}

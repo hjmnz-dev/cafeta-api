@@ -6,6 +6,8 @@ import { PrismaModule } from './prisma/prisma.module.js';
 import { HealthModule } from './health/health.module.js';
 import { AuditModule } from './common/audit/audit.module.js';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter.js';
+import { AuthModule } from './modules/auth/auth.module.js';
+import { CareersModule } from './modules/careers/careers.module.js';
 
 @Module({
   imports: [
@@ -18,6 +20,8 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter.js';
     PrismaModule,
     AuditModule,
     HealthModule,
+    CareersModule,
+    AuthModule,
   ],
   providers: [{ provide: APP_FILTER, useClass: HttpExceptionFilter }],
 })

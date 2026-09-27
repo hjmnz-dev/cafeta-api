@@ -23,6 +23,7 @@ const APP_TABLES = [
   'notifications',
   'reports',
   'audit_logs',
+  'sessions',
 ];
 
 // TRUNCATE no dispara los triggers de fila, así que ni la bitácora inmutable ni

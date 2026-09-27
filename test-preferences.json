@@ -1,0 +1,9 @@
+{
+  "tool": "vitest",
+  "gate": null,
+  "additionalTools": ["supertest", "@nestjs/testing"],
+  "e2eTool": "none",
+  "testDir": "beside the source (unit), test/ (e2e con Supertest)",
+  "filePattern": "*.spec.ts, test/*.e2e-spec.ts",
+  "packageManager": "npm"
+}
