@@ -31,21 +31,23 @@ npm run db:seed          # carreras y admin; con SEED_DEMO=true también la demo
 
 ## Key files
 
-| File                                          | Owns                                                                                                                    |
-| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `src/main.ts`                                 | Arranque: `trust proxy`, puerto, llama a `configureApp()`                                                               |
-| `src/app.setup.ts`                            | `configureApp()`: prefijo, `ValidationPipe`, helmet, CORS, Swagger, filtro de errores; lo comparten `main.ts` y las e2e |
-| `src/config/env.validation.ts`                | Variables de entorno validadas al arrancar; si falta una, la API no inicia                                              |
-| `src/common/filters/http-exception.filter.ts` | Forma única de error `{ statusCode, message, code }`                                                                    |
-| `src/common/decorators/public.decorator.ts`   | `@Public()` para rutas sin token                                                                                        |
-| `src/prisma/prisma.service.ts`                | Cliente de Prisma global, pool de 5 conexiones, sin conectar al arrancar                                                |
-| `prisma/schema.prisma`, `prisma.config.ts`    | Esquema y configuración de Prisma 7                                                                                     |
-| `prisma/seed.ts`                              | Semilla: carreras y admin siempre; la demo del prototipo solo con `SEED_DEMO=true`                                      |
-| `src/modules/auth/jwt-auth.guard.ts`          | Guard JWT global (`APP_GUARD`): exige Bearer con su sesión vigente en `sessions` y cuenta activa, salvo en `@Public()`  |
-| `src/common/actor/`                           | `@Actor()` (quién hace la petición, para auditar) y `@CurrentUser()` (el usuario que dejó el guard)                     |
-| `src/common/audit/`                           | `AuditService` y el catálogo `AUDIT_ACTIONS`; `AdminReasonDto` para las sanciones de admin                              |
-| `src/common/soft-delete/soft-delete.ts`       | Filtros `ACTIVE` y `ACTIVE_AUTHOR`, y `stateChangeArgs` para desactivar y reactivar sin carreras                        |
-| `test/support/reset-db.ts`                    | `APP_TABLES`: las tablas que las e2e vacían con TRUNCATE antes de cada prueba                                           |
+| File                                          | Owns                                                                                                                            |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main.ts`                                 | Arranque: `trust proxy`, puerto, llama a `configureApp()`                                                                       |
+| `src/app.setup.ts`                            | `configureApp()`: prefijo, `ValidationPipe`, helmet, CORS, Swagger, filtro de errores; lo comparten `main.ts` y las e2e         |
+| `src/config/env.validation.ts`                | Variables de entorno validadas al arrancar; si falta una, la API no inicia                                                      |
+| `src/common/filters/http-exception.filter.ts` | Forma única de error `{ statusCode, message, code }`                                                                            |
+| `src/common/decorators/public.decorator.ts`   | `@Public()` para rutas sin token                                                                                                |
+| `src/prisma/prisma.service.ts`                | Cliente de Prisma global, pool de 5 conexiones, sin conectar al arrancar                                                        |
+| `prisma/schema.prisma`, `prisma.config.ts`    | Esquema y configuración de Prisma 7                                                                                             |
+| `prisma/seed.ts`                              | Semilla: carreras y admin siempre; la demo del prototipo solo con `SEED_DEMO=true`                                              |
+| `src/modules/auth/jwt-auth.guard.ts`          | Guard JWT global (`APP_GUARD`): exige Bearer con su sesión vigente en `sessions` y cuenta activa, salvo en `@Public()`          |
+| `src/common/actor/`                           | `@Actor()` (quién hace la petición, para auditar) y `@CurrentUser()` (el usuario que dejó el guard)                             |
+| `src/common/audit/`                           | `AuditService` y el catálogo `AUDIT_ACTIONS`; `AdminReasonDto` para las sanciones de admin                                      |
+| `src/common/soft-delete/soft-delete.ts`       | Filtros `ACTIVE` y `ACTIVE_AUTHOR`, y `stateChangeArgs` para desactivar y reactivar sin carreras                                |
+| `src/common/rate-limit/`                      | `RateLimitModule` (límites con nombre: `auth` por IP, `posts` por usuario) y `UserThrottlerGuard`, que cuenta por `req.user.id` |
+| `src/modules/posts/post-queries.ts`           | `VISIBLE_POST`, `POST_ORDER` y los filtros del feed; toda lectura de publicaciones parte de aquí                                |
+| `test/support/reset-db.ts`                    | `APP_TABLES`: las tablas que las e2e vacían con TRUNCATE antes de cada prueba                                                   |
 
 ## Conventions
 
@@ -55,6 +57,8 @@ npm run db:seed          # carreras y admin; con SEED_DEMO=true también la demo
 - Toda entrada pasa por un DTO validado (`whitelist`, `forbidNonWhitelisted`); nunca se pasa el `body` crudo a Prisma.
 - Todo error sale por el filtro global con un `code` estable en MAYÚSCULAS (por ejemplo `EMAIL_NOT_INSTITUTIONAL`).
 - Listas paginadas por cursor: `?cursor=<id>&limit=<n>` (20 por defecto, 50 máximo), respuesta `{ items, nextCursor }`.
+- El cursor se resuelve a mano (se pide `limit + 1`, orden `created_at desc, id desc` y un `where` "después de"), no con el `cursor` nativo de Prisma: un cursor que no existe responde `INVALID_CURSOR` en vez de una lista vacía (ver `posts-read.service.ts`).
+- Un límite de peticiones nuevo se agrega con nombre en `RateLimitModule`; cada ruta activa su guard y salta los demás con `@SkipThrottle({ <nombre>: true })`.
 - Toda ruta exige JWT salvo las marcadas `@Public()`.
 - El controller obtiene quién hace la petición con `@Actor()` y el usuario autenticado con `@CurrentUser()`, y se los pasa al service.
 - Las entidades con baja lógica nunca se borran de verdad (un trigger lo impide): se desactivan, y toda lectura filtra con `ACTIVE` (más `ACTIVE_AUTHOR` si tienen autor).
@@ -74,6 +78,9 @@ npm run db:seed          # carreras y admin; con SEED_DEMO=true también la demo
 - Prisma 7 ya no siembra solo tras `migrate dev`: corre `npm run db:seed` aparte.
 - Las e2e corren una a la vez (`fileParallelism: false`) porque comparten `cafeta_test`.
 - `.env.test` sube `AUTH_RATE_LIMIT` a 1000 para que las e2e no choquen con el límite; para probar el 429, fija la variable antes de importar `AppModule` (ver `test/auth-rate-limit.e2e-spec.ts`).
+- `.env.test` también sube `POST_RATE_LIMIT` (publicaciones por minuto por usuario, 10 por defecto) a 1000; su 429 se prueba igual, en `test/posts-rate-limit.e2e-spec.ts`.
+- Los guards corren antes del `ValidationPipe`: un límite de peticiones también cuenta las que después se rechazan con 400.
+- Una prueba unitaria que usa `plainToInstance` con `@Type` o conversión implícita necesita `import 'reflect-metadata'` al inicio; en la app lo carga Nest.
 - Hoy las rutas fuera de `/api/v1` responden el 404 en HTML de Express, no por el filtro (hallazgo abierto en `docs/reviews/2026-09-25-cafeta-api-main.md`).
 
 ## Agent skills
@@ -93,5 +100,6 @@ Declined: skills para `@nestjs/jwt`, `@nestjs/throttler` y `bcryptjs` (los cubre
 - 0002 Modelo de datos (`docs/specs/0002-modelo-de-datos/index.md`)
 - 0003 Auditoría y baja lógica (`docs/specs/0003-auditoria-baja-logica/index.md`)
 - 0004 Registro, inicio y cierre de sesión (`docs/specs/0004-registro-inicio-cierre-sesion/index.md`)
+- 0005 Publicar y ver el feed (`docs/specs/0005-publicar-ver-feed/index.md`)
 
 _Drafted by /audit from the repo, worth a quick human pass. Edit freely: once a line stops matching this draft, later runs treat it as curated and will flag rather than overwrite it._
