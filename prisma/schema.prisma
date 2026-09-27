@@ -124,6 +124,25 @@ enum NotificationType {
 
 // ── Cuenta e identidad ──
 
+// Sesión de un JWT (spec 0004): su id es el jti del token. Se revoca, nunca se borra.
+model Session {
+  id        String    @id @default(uuid(7)) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  remember  Boolean
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(3)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(3)
+  ip        String?   @db.VarChar(45)
+  userAgent String?   @map("user_agent") @db.VarChar(255)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
 model User {
   id                 String             @id @default(uuid(7)) @db.Uuid
   email              String             @unique @db.VarChar(254)
@@ -159,6 +178,7 @@ model User {
   reportsAgainst         Report[]                @relation("ReportTargetUser")
   reportsResolved        Report[]                @relation("ReportResolver")
   auditLogs              AuditLog[]
+  sessions               Session[]
 
   @@index([createdAt])
   @@map("users")

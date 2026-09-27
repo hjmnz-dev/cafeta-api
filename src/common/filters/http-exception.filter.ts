@@ -4,9 +4,13 @@ import {
   ExceptionFilter,
   HttpException,
   HttpStatus,
+  Injectable,
   Logger,
 } from '@nestjs/common';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
+import { actorFromRequest } from '../actor/actor.decorator.js';
+import type { AuthenticatedUser } from '../actor/actor-context.js';
+import { AuditService } from '../audit/audit.service.js';
 
 export interface ErrorBody {
   statusCode: number;
@@ -17,14 +21,42 @@ export interface ErrorBody {
 // Toda respuesta de error sale con la forma { statusCode, message, code }.
 // Para dar un code propio: throw new ConflictException({ message, code: 'EMAIL_TAKEN' }).
 // Sin code propio, se usa el nombre del estado HTTP (NOT_FOUND, BAD_REQUEST...).
+// Cada 403 queda en la bitácora como access.denied antes de responder (spec 0003).
+@Injectable()
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(HttpExceptionFilter.name);
 
-  catch(exception: unknown, host: ArgumentsHost): void {
-    const res = host.switchToHttp().getResponse<Response>();
+  constructor(private readonly audit: AuditService) {}
+
+  async catch(exception: unknown, host: ArgumentsHost): Promise<void> {
+    const http = host.switchToHttp();
+    const res = http.getResponse<Response>();
     const body = this.toBody(exception);
+    if (body.statusCode === HttpStatus.FORBIDDEN) {
+      await this.auditDenied(
+        http.getRequest<Request & { user?: AuthenticatedUser }>(),
+        body,
+      );
+    }
     res.status(body.statusCode).json(body);
+  }
+
+  private async auditDenied(
+    req: Request & { user?: AuthenticatedUser },
+    body: ErrorBody,
+  ): Promise<void> {
+    await this.audit.recordStandalone({
+      action: 'access.denied',
+      entityType: 'route',
+      actor: actorFromRequest(req),
+      succeeded: false,
+      metadata: {
+        method: req.method,
+        route: req.originalUrl.split('?')[0],
+        code: body.code,
+      },
+    });
   }
 
   private toBody(exception: unknown): ErrorBody {

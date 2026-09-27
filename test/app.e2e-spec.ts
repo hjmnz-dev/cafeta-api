@@ -43,6 +43,10 @@ describe('API (e2e)', () => {
     expect(res.body).toMatchObject({ statusCode: 404, code: 'NOT_FOUND' });
   });
 
+  it('las rutas de prueba de las e2e no existen en la app de producción', async () => {
+    await request(server).get('/api/v1/__probe__/careers').expect(404);
+  });
+
   it('las rutas viven bajo /api/v1', async () => {
     await request(server).get('/health').expect(404);
   });

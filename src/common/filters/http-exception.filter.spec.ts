@@ -1,25 +1,39 @@
 import {
   ArgumentsHost,
   ConflictException,
+  ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
+import type { AuditService } from '../audit/audit.service.js';
 import { HttpExceptionFilter } from './http-exception.filter.js';
 
 function hostWithResponse() {
   const res = { status: vi.fn(), json: vi.fn() };
   res.status.mockReturnValue(res);
+  const req = {
+    method: 'POST',
+    originalUrl: '/api/v1/admin/usuarios/1/deactivate?x=1',
+    ip: '10.0.0.7',
+    headers: { 'user-agent': 'vitest' },
+  };
   const host = {
-    switchToHttp: () => ({ getResponse: () => res }),
+    switchToHttp: () => ({ getResponse: () => res, getRequest: () => req }),
   } as unknown as ArgumentsHost;
   return { host, res };
 }
 
-describe('HttpExceptionFilter', () => {
-  const filter = new HttpExceptionFilter();
+function auditDouble() {
+  const recordStandalone = vi.fn().mockResolvedValue(undefined);
+  return {
+    audit: { recordStandalone } as unknown as AuditService,
+    recordStandalone,
+  };
+}
 
-  it('usa el code propio de la excepción', () => {
+describe('HttpExceptionFilter', () => {
+  it('usa el code propio de la excepción', async () => {
     const { host, res } = hostWithResponse();
-    filter.catch(
+    await new HttpExceptionFilter(auditDouble().audit).catch(
       new ConflictException({ message: 'Ya existe', code: 'EMAIL_TAKEN' }),
       host,
     );
@@ -31,9 +45,12 @@ describe('HttpExceptionFilter', () => {
     });
   });
 
-  it('usa el nombre del estado HTTP cuando no hay code propio', () => {
+  it('usa el nombre del estado HTTP cuando no hay code propio', async () => {
     const { host, res } = hostWithResponse();
-    filter.catch(new NotFoundException('No existe'), host);
+    await new HttpExceptionFilter(auditDouble().audit).catch(
+      new NotFoundException('No existe'),
+      host,
+    );
     expect(res.json).toHaveBeenCalledWith({
       statusCode: 404,
       message: 'No existe',
@@ -41,13 +58,49 @@ describe('HttpExceptionFilter', () => {
     });
   });
 
-  it('oculta el detalle de un error inesperado', () => {
+  it('oculta el detalle de un error inesperado', async () => {
     const { host, res } = hostWithResponse();
-    filter.catch(new Error('secreto interno'), host);
+    await new HttpExceptionFilter(auditDouble().audit).catch(
+      new Error('secreto interno'),
+      host,
+    );
     expect(res.json).toHaveBeenCalledWith({
       statusCode: 500,
       message: 'Error interno del servidor',
       code: 'INTERNAL_SERVER_ERROR',
     });
+  });
+
+  it('audita un 403 como access.denied antes de responder', async () => {
+    const { host, res } = hostWithResponse();
+    const { audit, recordStandalone } = auditDouble();
+    await new HttpExceptionFilter(audit).catch(new ForbiddenException(), host);
+    expect(recordStandalone).toHaveBeenCalledWith({
+      action: 'access.denied',
+      entityType: 'route',
+      actor: {
+        userId: null,
+        role: null,
+        ip: '10.0.0.7',
+        userAgent: 'vitest',
+      },
+      succeeded: false,
+      metadata: {
+        method: 'POST',
+        route: '/api/v1/admin/usuarios/1/deactivate',
+        code: 'FORBIDDEN',
+      },
+    });
+    expect(recordStandalone.mock.invocationCallOrder[0]).toBeLessThan(
+      res.status.mock.invocationCallOrder[0],
+    );
+    expect(res.status).toHaveBeenCalledWith(403);
+  });
+
+  it('no audita errores que no son 403', async () => {
+    const { host } = hostWithResponse();
+    const { audit, recordStandalone } = auditDouble();
+    await new HttpExceptionFilter(audit).catch(new NotFoundException(), host);
+    expect(recordStandalone).not.toHaveBeenCalled();
   });
 });
