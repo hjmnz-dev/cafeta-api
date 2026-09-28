@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Crea la infraestructura de producción de Cafeta en Azure (spec 0006).
-# Se corre una vez desde Azure Cloud Shell (Bash), que ya trae `az` con tu sesión.
+# Se corre desde Azure Cloud Shell (Bash), que ya trae `az` con tu sesión.
 #
 #   SUFFIX=hj01 ALERT_EMAIL=tu@correo.com bash provision.sh
 #
-# Se puede volver a correr: lo que ya existe no se toca. Para rotar secretos:
+# Se puede volver a correr: lo que ya existe no se crea de nuevo. Para rotar secretos:
 #   ROTATE_JWT=1  genera un JWT_SECRET nuevo (cierra todas las sesiones).
 #   ROTATE_DB=1   vuelve a pedir DATABASE_URL y DIRECT_URL.
 # Los pasos y lo que va después están en infra/README.md.
@@ -12,28 +12,36 @@ set -euo pipefail
 
 SUFFIX="${SUFFIX:?Define SUFFIX: 4 letras minúsculas o números, por ejemplo hj01}"
 ALERT_EMAIL="${ALERT_EMAIL:?Define ALERT_EMAIL: el correo que recibe los avisos del presupuesto}"
-LOCATION="${LOCATION:-eastus}"
-SWA_LOCATION="${SWA_LOCATION:-eastus2}"
-GITHUB_REPO="${GITHUB_REPO:-hjmnz-dev/cafeta-api}"
+LOCATION="${LOCATION:-canadacentral}"
+GITHUB_OWNER="${GITHUB_OWNER:-hjmnz-dev}"
 ROTATE_JWT="${ROTATE_JWT:-0}"
 ROTATE_DB="${ROTATE_DB:-0}"
 
 RG="rg-cafeta"
 PLAN="plan-cafeta"
-APP="cafeta-api-${SUFFIX}"
-SWA_WEB="swa-cafeta-web"
-SWA_ADMIN="swa-cafeta-admin"
+API="cafeta-api-${SUFFIX}"
+WEB="cafeta-web-${SUFFIX}"
+ADMIN="cafeta-admin-${SUFFIX}"
+APPS=("$API" "$WEB" "$ADMIN")
 IDENTITY="id-cafeta-deploy"
-FEDERATED="github-production"
 BUDGET="budget-cafeta"
+BUDGET_USD=20
 RUNTIME="NODE:24-lts"
 HEALTH_PATH=/api/v1/health
+
+# Una credencial federada por repo: nombre y repo de GitHub.
+FEDERATED=(
+  "github-api:${GITHUB_OWNER}/cafeta-api"
+  "github-web:${GITHUB_OWNER}/cafeta-app"
+  "github-admin:${GITHUB_OWNER}/cafeta-admin-web"
+)
 
 step() { printf '\n==> %s\n' "$1"; }
 fail() {
   printf 'Error: %s\n' "$1" >&2
   exit 1
 }
+host_of() { az webapp show -g "$RG" -n "$1" --query defaultHostName -o tsv; }
 
 [[ "$SUFFIX" =~ ^[a-z0-9]{4}$ ]] || fail "SUFFIX debe tener 4 letras minúsculas o números (recibí '$SUFFIX')."
 [[ "$ALERT_EMAIL" == *@*.* ]] || fail "ALERT_EMAIL no parece un correo."
@@ -42,8 +50,14 @@ SUB_ID="$(az account show --query id -o tsv)"
 TENANT_ID="$(az account show --query tenantId -o tsv)"
 echo "Suscripción: $(az account show --query name -o tsv) ($SUB_ID)"
 
-# ── 1. Grupo, plan y Web App ──
-step "1/8 Grupo de recursos, plan B1 y Web App $APP"
+# Azure for Students solo deja crear recursos en algunas regiones. Nunca se elige otra por su cuenta.
+ALLOWED="$(az policy assignment list --query "[].parameters.listOfAllowedLocations.value[]" -o tsv 2>/dev/null || true)"
+if [[ -n "$ALLOWED" ]] && ! grep -qx "$LOCATION" <<<"$ALLOWED"; then
+  fail "La suscripción no permite '$LOCATION'. Regiones permitidas: $(tr '\n' ' ' <<<"$ALLOWED")"
+fi
+
+# ── 1. Grupo, plan y las tres Web Apps ──
+step "1/8 Grupo de recursos, plan B1 y Web Apps $API, $WEB y $ADMIN"
 for provider in Microsoft.Web Microsoft.ManagedIdentity; do
   az provider register --namespace "$provider" --wait -o none
 done
@@ -60,54 +74,60 @@ fi
 if ! az appservice plan show -g "$RG" -n "$PLAN" -o none 2>/dev/null; then
   az appservice plan create -g "$RG" -n "$PLAN" -l "$LOCATION" --is-linux --sku B1 -o none
 fi
-if ! az webapp show -g "$RG" -n "$APP" -o none 2>/dev/null; then
-  az webapp create -g "$RG" -p "$PLAN" -n "$APP" --runtime "$RUNTIME" -o none
-fi
-
-# ── 2. Configuración y seguridad de la Web App ──
-step "2/8 Always On, WebSockets, HTTPS, TLS 1.2, health check y sin autenticación básica"
-az webapp config set -g "$RG" -n "$APP" \
-  --always-on true \
-  --web-sockets-enabled true \
-  --http20-enabled true \
-  --ftps-state Disabled \
-  --min-tls-version 1.2 \
-  --startup-file "node dist/main.js" \
-  -o none
-az webapp config set -g "$RG" -n "$APP" \
-  --generic-configurations "{\"healthCheckPath\": \"$HEALTH_PATH\"}" -o none
-az webapp update -g "$RG" -n "$APP" --https-only true -o none
-for policy in scm ftp; do
-  az resource update -g "$RG" \
-    --namespace Microsoft.Web \
-    --resource-type basicPublishingCredentialsPolicies \
-    --parent "sites/$APP" \
-    --name "$policy" \
-    --set properties.allow=false \
-    -o none
+for app in "${APPS[@]}"; do
+  if ! az webapp show -g "$RG" -n "$app" -o none 2>/dev/null; then
+    az webapp create -g "$RG" -p "$PLAN" -n "$app" --runtime "$RUNTIME" -o none
+  fi
 done
 
+# ── 2. Configuración y seguridad de las Web Apps ──
+step "2/8 Always On, HTTPS, TLS 1.2, sin FTP ni autenticación básica; WebSockets y health check en la API"
+configure() {
+  local app="$1" sockets="$2" startup="$3"
+  az webapp config set -g "$RG" -n "$app" \
+    --always-on true \
+    --web-sockets-enabled "$sockets" \
+    --http20-enabled true \
+    --ftps-state Disabled \
+    --min-tls-version 1.2 \
+    --startup-file "$startup" \
+    -o none
+  az webapp update -g "$RG" -n "$app" --https-only true -o none
+  for policy in scm ftp; do
+    az resource update -g "$RG" \
+      --namespace Microsoft.Web \
+      --resource-type basicPublishingCredentialsPolicies \
+      --parent "sites/$app" \
+      --name "$policy" \
+      --set properties.allow=false \
+      -o none
+  done
+}
+configure "$API" true "node dist/main.js"
+az webapp config set -g "$RG" -n "$API" \
+  --generic-configurations "{\"healthCheckPath\": \"$HEALTH_PATH\"}" -o none
+configure "$WEB" false "node server.mjs"
+configure "$ADMIN" false "node server.mjs"
+
 # ── 3. Variables sin secretos ──
-step "3/8 Variables de la API sin secretos"
-az webapp config appsettings set -g "$RG" -n "$APP" -o none --settings \
-  NODE_ENV=production \
-  SCM_DO_BUILD_DURING_DEPLOYMENT=false \
-  WEBSITE_RUN_FROM_PACKAGE=1 \
+step "3/8 Variables sin secretos"
+for app in "${APPS[@]}"; do
+  az webapp config appsettings set -g "$RG" -n "$app" -o none --settings \
+    NODE_ENV=production \
+    SCM_DO_BUILD_DURING_DEPLOYMENT=false \
+    WEBSITE_RUN_FROM_PACKAGE=1
+done
+az webapp config appsettings set -g "$RG" -n "$API" -o none --settings \
   ALLOWED_EMAIL_DOMAINS=est.intec.edu.do,intec.edu.do \
   AUTH_RATE_LIMIT=5 \
   POST_RATE_LIMIT=10
 
-# ── 4. Static Web Apps y orígenes de CORS ──
-step "4/8 Static Web Apps de la web y del admin"
-for swa in "$SWA_WEB" "$SWA_ADMIN"; do
-  if ! az staticwebapp show -g "$RG" -n "$swa" -o none 2>/dev/null; then
-    az staticwebapp create -g "$RG" -n "$swa" -l "$SWA_LOCATION" --sku Free -o none
-  fi
-done
-WEB_HOST="$(az staticwebapp show -g "$RG" -n "$SWA_WEB" --query defaultHostname -o tsv)"
-ADMIN_HOST="$(az staticwebapp show -g "$RG" -n "$SWA_ADMIN" --query defaultHostname -o tsv)"
+# ── 4. Orígenes de CORS ──
+step "4/8 WEB_ORIGIN y ADMIN_ORIGIN de la API"
+WEB_HOST="$(host_of "$WEB")"
+ADMIN_HOST="$(host_of "$ADMIN")"
 # Orígenes exactos: esquema y host, sin barra al final.
-az webapp config appsettings set -g "$RG" -n "$APP" -o none --settings \
+az webapp config appsettings set -g "$RG" -n "$API" -o none --settings \
   "WEB_ORIGIN=https://$WEB_HOST" \
   "ADMIN_ORIGIN=https://$ADMIN_HOST"
 
@@ -115,12 +135,12 @@ az webapp config appsettings set -g "$RG" -n "$APP" -o none --settings \
 step "5/8 Secretos de la API"
 has_setting() {
   local count
-  count="$(az webapp config appsettings list -g "$RG" -n "$APP" --query "length([?name=='$1'])" -o tsv)"
+  count="$(az webapp config appsettings list -g "$RG" -n "$API" --query "length([?name=='$1'])" -o tsv)"
   [[ "$count" == "1" ]]
 }
 
 if [[ "$ROTATE_JWT" == "1" ]] || ! has_setting JWT_SECRET; then
-  az webapp config appsettings set -g "$RG" -n "$APP" -o none \
+  az webapp config appsettings set -g "$RG" -n "$API" -o none \
     --settings "JWT_SECRET=$(openssl rand -base64 48)"
   echo "JWT_SECRET nuevo guardado."
 else
@@ -138,7 +158,7 @@ if [[ "$ROTATE_DB" == "1" ]] || ! has_setting DATABASE_URL || ! has_setting DIRE
   [[ "$DIRECT_URL" == postgresql://*sslmode=require* && "$DIRECT_URL" != *uselibpqcompat* ]] ||
     fail "DIRECT_URL debe empezar con postgresql://, llevar sslmode=require y no llevar uselibpqcompat."
   # La API no usa DIRECT_URL en runtime, pero env.validation.ts la exige para arrancar.
-  az webapp config appsettings set -g "$RG" -n "$APP" -o none \
+  az webapp config appsettings set -g "$RG" -n "$API" -o none \
     --settings "DATABASE_URL=$DATABASE_URL" "DIRECT_URL=$DIRECT_URL"
   unset DATABASE_URL DIRECT_URL
   echo "DATABASE_URL y DIRECT_URL guardadas."
@@ -147,38 +167,47 @@ else
 fi
 
 # ── 6. Identidad de despliegue con OIDC ──
-step "6/8 Identidad $IDENTITY con credencial federada para GitHub"
+step "6/8 Identidad $IDENTITY con una credencial federada por repo"
 if ! az identity show -g "$RG" -n "$IDENTITY" -o none 2>/dev/null; then
   az identity create -g "$RG" -n "$IDENTITY" -l "$LOCATION" -o none
 fi
 CLIENT_ID="$(az identity show -g "$RG" -n "$IDENTITY" --query clientId -o tsv)"
 PRINCIPAL_ID="$(az identity show -g "$RG" -n "$IDENTITY" --query principalId -o tsv)"
 
-if ! az identity federated-credential show -g "$RG" --identity-name "$IDENTITY" -n "$FEDERATED" -o none 2>/dev/null; then
-  az identity federated-credential create -g "$RG" \
-    --identity-name "$IDENTITY" \
-    -n "$FEDERATED" \
-    --issuer https://token.actions.githubusercontent.com \
-    --subject "repo:${GITHUB_REPO}:environment:production" \
-    --audiences api://AzureADTokenExchange \
-    -o none
-fi
+for entry in "${FEDERATED[@]}"; do
+  name="${entry%%:*}"
+  subject="repo:${entry#*:}:environment:production"
+  # Azure no acepta dos credenciales con el mismo subject; se revisa por subject, no por nombre.
+  existing="$(az identity federated-credential list -g "$RG" --identity-name "$IDENTITY" \
+    --query "length([?subject=='$subject'])" -o tsv)"
+  if [[ "$existing" == "0" ]]; then
+    az identity federated-credential create -g "$RG" \
+      --identity-name "$IDENTITY" \
+      -n "$name" \
+      --issuer https://token.actions.githubusercontent.com \
+      --subject "$subject" \
+      --audiences api://AzureADTokenExchange \
+      -o none
+  fi
+done
 
-# Solo puede desplegar la Web App de la API; nada más de la suscripción.
-APP_ID="$(az webapp show -g "$RG" -n "$APP" --query id -o tsv)"
-ASSIGNED="$(az role assignment list --scope "$APP_ID" --role "Website Contributor" \
-  --query "length([?principalId=='$PRINCIPAL_ID'])" -o tsv)"
-if [[ "$ASSIGNED" == "0" ]]; then
-  az role assignment create \
-    --assignee-object-id "$PRINCIPAL_ID" \
-    --assignee-principal-type ServicePrincipal \
-    --role "Website Contributor" \
-    --scope "$APP_ID" \
-    -o none
-fi
+# Solo puede desplegar las tres Web Apps; nada más de la suscripción.
+for app in "${APPS[@]}"; do
+  app_id="$(az webapp show -g "$RG" -n "$app" --query id -o tsv)"
+  assigned="$(az role assignment list --scope "$app_id" --role "Website Contributor" \
+    --query "length([?principalId=='$PRINCIPAL_ID'])" -o tsv)"
+  if [[ "$assigned" == "0" ]]; then
+    az role assignment create \
+      --assignee-object-id "$PRINCIPAL_ID" \
+      --assignee-principal-type ServicePrincipal \
+      --role "Website Contributor" \
+      --scope "$app_id" \
+      -o none
+  fi
+done
 
 # ── 7. Presupuesto ──
-step "7/8 Presupuesto de 15 USD al mes con avisos al 80 % y al 100 %"
+step "7/8 Presupuesto de $BUDGET_USD USD al mes con avisos al 80 % y al 100 %"
 BUDGET_URL="https://management.azure.com/subscriptions/$SUB_ID/resourceGroups/$RG/providers/Microsoft.Consumption/budgets/$BUDGET?api-version=2023-05-01"
 if az rest --method get --url "$BUDGET_URL" -o none 2>/dev/null; then
   echo "El presupuesto ya existe."
@@ -190,7 +219,7 @@ else
 {
   "properties": {
     "category": "Cost",
-    "amount": 15,
+    "amount": $BUDGET_USD,
     "timeGrain": "Monthly",
     "timePeriod": { "startDate": "${START}T00:00:00Z", "endDate": "${END}T00:00:00Z" },
     "notifications": {
@@ -221,26 +250,16 @@ JSON
   fi
 fi
 
-# ── 8. Lo que va a GitHub ──
-step "8/8 Valores para los ambientes production de GitHub (no son secretos)"
-API_URL="https://$(az webapp show -g "$RG" -n "$APP" --query defaultHostName -o tsv)"
+# ── 8. Resumen ──
+step "8/8 Listo"
 cat <<EOF
 
-hjmnz-dev/cafeta-api (variables):
-  AZURE_CLIENT_ID=$CLIENT_ID
-  AZURE_TENANT_ID=$TENANT_ID
-  AZURE_SUBSCRIPTION_ID=$SUB_ID
-  AZURE_WEBAPP_NAME=$APP
-  API_URL=$API_URL
+API:    https://$(host_of "$API")
+Web:    https://$WEB_HOST
+Admin:  https://$ADMIN_HOST
+Identidad de despliegue: $IDENTITY (clientId $CLIENT_ID, tenant $TENANT_ID)
 
-hjmnz-dev/cafeta-app (variables):
-  VITE_API_URL=$API_URL/api/v1
-  PUBLIC_URL=https://$WEB_HOST
-
-hjmnz-dev/cafeta-admin-web (variables):
-  PUBLIC_URL=https://$ADMIN_HOST
-
-Los tokens de Static Web Apps no se imprimen aquí. Cópialos uno a la vez con:
-  az staticwebapp secrets list -n $SWA_WEB --query properties.apiKey -o tsv
-  az staticwebapp secrets list -n $SWA_ADMIN --query properties.apiKey -o tsv
+Siguiente paso: cargar GitHub con
+  gh auth login
+  SUFFIX=$SUFFIX bash github-env.sh
 EOF
