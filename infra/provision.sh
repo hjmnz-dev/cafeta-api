@@ -53,7 +53,10 @@ done
 az webapp list-runtimes --os linux -o tsv | grep -qE "^NODE[:|]24-lts([[:space:]]|$)" ||
   fail "El runtime $RUNTIME no aparece en 'az webapp list-runtimes --os linux'. Revisa el spec 0006 antes de usar otra versión."
 
-az group create -n "$RG" -l "$LOCATION" -o none
+# Un grupo que ya existe no cambia de región; sus recursos igual van en $LOCATION.
+if [[ "$(az group exists -n "$RG")" != "true" ]]; then
+  az group create -n "$RG" -l "$LOCATION" -o none
+fi
 if ! az appservice plan show -g "$RG" -n "$PLAN" -o none 2>/dev/null; then
   az appservice plan create -g "$RG" -n "$PLAN" -l "$LOCATION" --is-linux --sku B1 -o none
 fi
