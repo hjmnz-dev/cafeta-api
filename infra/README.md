@@ -79,7 +79,14 @@ for repo in cafeta-api cafeta-app cafeta-admin-web; do
 done
 ```
 
-Después carga las variables (los valores salen del paso 8 del script) y los secretos. `gh secret set` sin `--body` te pide el valor sin mostrarlo.
+Después carga las variables y los secretos. **El camino rápido** es `infra/github-env.sh` en Cloud Shell: lee de Azure las URLs, la identidad, las cadenas de Supabase y los tokens de Static Web Apps, los pasa a GitHub sin mostrarlos, y solo te pide la cuenta admin de la semilla.
+
+```bash
+gh auth login
+SUFFIX=hj01 bash github-env.sh
+```
+
+Si prefieres hacerlo a mano desde tu PC, estos son los comandos (los valores salen del paso 8 de `provision.sh`). `gh secret set` sin `--body` te pide el valor sin mostrarlo.
 
 **`cafeta-api`**
 
