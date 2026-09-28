@@ -49,7 +49,8 @@ for provider in Microsoft.Web Microsoft.ManagedIdentity; do
 done
 
 # No se cae a otra versión por su cuenta: si Node 24 no está, se decide antes de seguir.
-az webapp list-runtimes --os linux -o tsv | grep -qx "$RUNTIME" ||
+# Según la versión de az, la lista trae NODE:24-lts o NODE|24-lts (seguido de más columnas).
+az webapp list-runtimes --os linux -o tsv | grep -qE "^NODE[:|]24-lts([[:space:]]|$)" ||
   fail "El runtime $RUNTIME no aparece en 'az webapp list-runtimes --os linux'. Revisa el spec 0006 antes de usar otra versión."
 
 az group create -n "$RG" -l "$LOCATION" -o none
