@@ -1,4 +1,5 @@
 # Revisión en cada push y PR: lint, formato, tipos, build, pruebas unitarias y e2e.
+# En main, si todo pasa, despliega a producción (spec 0006, runbook en infra/README.md).
 name: CI
 
 on:
@@ -7,7 +8,8 @@ on:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # En las ramas un push nuevo cancela el CI viejo; en main nunca se corta un despliegue.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   check:
@@ -45,3 +47,44 @@ jobs:
       - run: npm test
       - run: npx prisma migrate deploy
       - run: npm run test:e2e
+
+  deploy:
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    permissions:
+      id-token: write
+      contents: read
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      # Primero el esquema, después el código: si la migración falla, nada se sube.
+      - name: Migrar Supabase
+        run: npx prisma migrate deploy
+        env:
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+      - name: Empaquetar
+        run: |
+          npm prune --omit=dev
+          zip -qr api.zip dist node_modules package.json package-lock.json
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ vars.AZURE_WEBAPP_NAME }}
+          package: api.zip
+      - name: Prueba de humo
+        run: curl --fail --silent --show-error --retry 30 --retry-delay 10 --retry-all-errors "${{ vars.API_URL }}/api/v1/health"
