@@ -1,0 +1,33 @@
+# Carga en producción las carreras y la cuenta admin (spec 0006). Se corre a mano
+# desde Actions; sin SEED_DEMO no hay usuarios ni publicaciones de demo.
+name: Semilla de producción
+
+on:
+  workflow_dispatch:
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    permissions:
+      contents: read
+    # Nunca a la vez que un despliegue.
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Sembrar
+        run: npm run db:seed
+        env:
+          # seed.ts conecta con node-postgres por DIRECT_URL, así que recibe la
+          # cadena de DATABASE_URL (la que lleva uselibpqcompat=true).
+          DIRECT_URL: ${{ secrets.DATABASE_URL }}
+          SEED_ADMIN_EMAIL: ${{ secrets.SEED_ADMIN_EMAIL }}
+          SEED_ADMIN_PASSWORD: ${{ secrets.SEED_ADMIN_PASSWORD }}
