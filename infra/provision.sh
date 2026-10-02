@@ -157,6 +157,12 @@ if [[ "$ROTATE_DB" == "1" ]] || ! has_setting DATABASE_URL || ! has_setting DIRE
     fail "DATABASE_URL debe empezar con postgresql:// y llevar uselibpqcompat=true."
   [[ "$DIRECT_URL" == postgresql://*sslmode=require* && "$DIRECT_URL" != *uselibpqcompat* ]] ||
     fail "DIRECT_URL debe empezar con postgresql://, llevar sslmode=require y no llevar uselibpqcompat."
+  # La conexión directa de Supabase (db.<ref>.supabase.co) solo responde por IPv6, y ni
+  # GitHub Actions ni App Service lo tienen: las dos cadenas van por el pooler en modo sesión.
+  for url in "$DATABASE_URL" "$DIRECT_URL"; do
+    [[ "$url" == *@*.pooler.supabase.com:5432/* ]] ||
+      fail "Las dos cadenas deben usar el Session pooler de Supabase (host *.pooler.supabase.com, puerto 5432), no db.<ref>.supabase.co."
+  done
   # La API no usa DIRECT_URL en runtime, pero env.validation.ts la exige para arrancar.
   az webapp config appsettings set -g "$RG" -n "$API" -o none \
     --settings "DATABASE_URL=$DATABASE_URL" "DIRECT_URL=$DIRECT_URL"

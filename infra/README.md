@@ -43,6 +43,8 @@ Por eso todo va en `canadacentral` (la más cercana a Supabase en East US), y po
 
    `uselibpqcompat=true` hace que `pg` 8 cifre la conexión sin exigir la cadena del certificado de Supabase; sin él la API falla con `self-signed certificate in certificate chain`. `DIRECT_URL` no lo lleva porque la lee el motor de migraciones de Prisma, que ya entiende `require` así.
 
+   **Las dos salen del Session pooler, aunque una se llame `DIRECT_URL`.** No uses la pestaña **Direct connection** (host `db.<ref>.supabase.co`): en el plan Free solo responde por IPv6, y ni GitHub Actions ni App Service lo tienen. Con ese host, el job `deploy` falla en "Migrar Supabase" con `P1001: Can't reach database server`. `provision.sh` rechaza ese host.
+
 5. En **Database, Settings, Connection pooling**, confirma que el **Pool Size** sea 15 o más. La API usa hasta 5 conexiones, y la migración y la semilla salen del mismo pooler.
 6. Si quieres, comprueba la conexión desde tu PC, dentro de `cafeta-api` (en PowerShell):
 
