@@ -158,7 +158,7 @@ Una vez, después del primer despliegue:
 - **Las tres Web Apps, Configuration, General settings**: Stack Node 24 LTS, Always On y HTTP 2.0 encendidos, FTP state `Disabled`, Minimum TLS 1.2, SCM y FTP Basic Auth apagados, HTTPS Only encendido.
 - **API**: Startup command `node dist/main.js`, Web sockets encendido, **Health check** activo en `/api/v1/health`, y en **Environment variables** están `DATABASE_URL`, `DIRECT_URL`, `JWT_SECRET`, `WEB_ORIGIN` y `ADMIN_ORIGIN` (los orígenes sin barra al final).
 - **Web y admin**: Startup command `node server.mjs`, Web sockets apagado, sin health check.
-- **`id-cafeta-deploy`**: tres credenciales federadas (`github-api`, `github-web`, `github-admin`) y el rol `Website Contributor` solo sobre las tres Web Apps.
+- **`id-cafeta-deploy`**: tres credenciales federadas (`github-api`, `github-web`, `github-admin`) y el rol `Website Contributor` solo sobre las tres Web Apps. Cada subject usa el formato inmutable de GitHub, con los números del dueño y del repo: `repo:hjmnz-dev@161862580/cafeta-api@1387792079:environment:production`. Si `azure/login` falla con `AADSTS70021`, compara el "subject claim" que imprime el log con el de la credencial y vuelve a correr `provision.sh`, que corrige los subjects viejos.
 
 ## Costo
 
