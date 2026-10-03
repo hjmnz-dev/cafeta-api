@@ -73,10 +73,12 @@ jobs:
         run: npx prisma migrate deploy
         env:
           DIRECT_URL: ${{ secrets.DIRECT_URL }}
+      # version.txt lleva el commit; /api/v1/health lo muestra en `version`.
       - name: Empaquetar
         run: |
           npm prune --omit=dev
-          zip -qr api.zip dist node_modules package.json package-lock.json
+          printf '%s' "$GITHUB_SHA" > version.txt
+          zip -qr api.zip dist node_modules package.json package-lock.json version.txt
       - uses: azure/login@v2
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
@@ -86,5 +88,15 @@ jobs:
         with:
           app-name: ${{ vars.AZURE_WEBAPP_NAME }}
           package: api.zip
+      # Azure sigue sirviendo la versión anterior un rato: solo cuenta ver el commit nuevo.
       - name: Prueba de humo
-        run: curl --fail --silent --show-error --retry 30 --retry-delay 10 --retry-all-errors "${{ vars.API_URL }}/api/v1/health"
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS "${{ vars.API_URL }}/api/v1/health" | grep -q "\"version\":\"$GITHUB_SHA\""; then
+              echo "La API ya responde con $GITHUB_SHA"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "La API no mostró $GITHUB_SHA en 5 minutos" >&2
+          exit 1

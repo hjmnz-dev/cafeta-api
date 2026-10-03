@@ -60,3 +60,6 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 # Cliente de Prisma generado (se regenera con prisma generate)
 /src/generated/
+
+# Commit desplegado; lo escribe el job deploy
+/version.txt
