@@ -28,7 +28,8 @@ describe('API (e2e)', () => {
   it('GET /api/v1/health informa el estado de la base', async () => {
     const res = await request(server).get('/api/v1/health');
     if (res.status === 200) {
-      expect(res.body).toEqual({ status: 'ok', db: 'up' });
+      // Sin version.txt (local y CI) la API reporta `dev`; en producción, el commit.
+      expect(res.body).toEqual({ status: 'ok', db: 'up', version: 'dev' });
     } else {
       expect(res.status).toBe(503);
       expect(res.body).toMatchObject({
