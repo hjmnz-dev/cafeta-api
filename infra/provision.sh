@@ -30,10 +30,14 @@ RUNTIME="NODE:24-lts"
 HEALTH_PATH=/api/v1/health
 
 # Una credencial federada por repo: nombre y repo de GitHub.
+# GitHub firma el token OIDC con subjects inmutables: repo:<dueño>@<id>/<repo>@<id>:...
+# Los números no cambian aunque se renombre el repo; se consultan con
+#   gh api users/<dueño> --jq .id   y   gh api repos/<dueño>/<repo> --jq .id
+GITHUB_OWNER_ID="${GITHUB_OWNER_ID:-161862580}"
 FEDERATED=(
-  "github-api:${GITHUB_OWNER}/cafeta-api"
-  "github-web:${GITHUB_OWNER}/cafeta-app"
-  "github-admin:${GITHUB_OWNER}/cafeta-admin-web"
+  "github-api:cafeta-api@1387792079"
+  "github-web:cafeta-app@1374691422"
+  "github-admin:cafeta-admin-web@1387790652"
 )
 
 step() { printf '\n==> %s\n' "$1"; }
@@ -157,6 +161,12 @@ if [[ "$ROTATE_DB" == "1" ]] || ! has_setting DATABASE_URL || ! has_setting DIRE
     fail "DATABASE_URL debe empezar con postgresql:// y llevar uselibpqcompat=true."
   [[ "$DIRECT_URL" == postgresql://*sslmode=require* && "$DIRECT_URL" != *uselibpqcompat* ]] ||
     fail "DIRECT_URL debe empezar con postgresql://, llevar sslmode=require y no llevar uselibpqcompat."
+  # La conexión directa de Supabase (db.<ref>.supabase.co) solo responde por IPv6, y ni
+  # GitHub Actions ni App Service lo tienen: las dos cadenas van por el pooler en modo sesión.
+  for url in "$DATABASE_URL" "$DIRECT_URL"; do
+    [[ "$url" == *@*.pooler.supabase.com:5432/* ]] ||
+      fail "Las dos cadenas deben usar el Session pooler de Supabase (host *.pooler.supabase.com, puerto 5432), no db.<ref>.supabase.co."
+  done
   # La API no usa DIRECT_URL en runtime, pero env.validation.ts la exige para arrancar.
   az webapp config appsettings set -g "$RG" -n "$API" -o none \
     --settings "DATABASE_URL=$DATABASE_URL" "DIRECT_URL=$DIRECT_URL"
@@ -176,11 +186,10 @@ PRINCIPAL_ID="$(az identity show -g "$RG" -n "$IDENTITY" --query principalId -o 
 
 for entry in "${FEDERATED[@]}"; do
   name="${entry%%:*}"
-  subject="repo:${entry#*:}:environment:production"
-  # Azure no acepta dos credenciales con el mismo subject; se revisa por subject, no por nombre.
-  existing="$(az identity federated-credential list -g "$RG" --identity-name "$IDENTITY" \
-    --query "length([?subject=='$subject'])" -o tsv)"
-  if [[ "$existing" == "0" ]]; then
+  subject="repo:${GITHUB_OWNER}@${GITHUB_OWNER_ID}/${entry#*:}:environment:production"
+  current="$(az identity federated-credential show -g "$RG" --identity-name "$IDENTITY" \
+    -n "$name" --query subject -o tsv 2>/dev/null || true)"
+  if [[ -z "$current" ]]; then
     az identity federated-credential create -g "$RG" \
       --identity-name "$IDENTITY" \
       -n "$name" \
@@ -188,6 +197,16 @@ for entry in "${FEDERATED[@]}"; do
       --subject "$subject" \
       --audiences api://AzureADTokenExchange \
       -o none
+  elif [[ "$current" != "$subject" ]]; then
+    # Una credencial creada con el formato viejo (repo:<dueño>/<repo>:...) se corrige en su lugar.
+    az identity federated-credential update -g "$RG" \
+      --identity-name "$IDENTITY" \
+      -n "$name" \
+      --issuer https://token.actions.githubusercontent.com \
+      --subject "$subject" \
+      --audiences api://AzureADTokenExchange \
+      -o none
+    echo "Credencial $name actualizada al subject inmutable."
   fi
 done
 
