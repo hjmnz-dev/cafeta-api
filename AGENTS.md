@@ -48,6 +48,10 @@ npm run db:seed          # carreras y admin; con SEED_DEMO=true también la demo
 | `src/common/rate-limit/`                      | `RateLimitModule` (límites con nombre: `auth` por IP, `posts` por usuario) y `UserThrottlerGuard`, que cuenta por `req.user.id` |
 | `src/modules/posts/post-queries.ts`           | `VISIBLE_POST`, `POST_ORDER` y los filtros del feed; toda lectura de publicaciones parte de aquí                                |
 | `test/support/reset-db.ts`                    | `APP_TABLES`: las tablas que las e2e vacían con TRUNCATE antes de cada prueba                                                   |
+| `infra/README.md`                             | Runbook de producción: Supabase, Azure, GitHub, primer despliegue, semilla, rotar secretos, costo                               |
+| `infra/provision.sh`, `infra/github-env.sh`   | Crean los recursos de Azure y cargan los ambientes `production` de los tres repos; se corren en Cloud Shell                     |
+| `.github/workflows/ci.yml`, `seed.yml`        | CI en cada push; job `deploy` solo en `main` (migrar, subir con OIDC, prueba de humo); `seed.yml` siembra producción a mano     |
+| `src/health/app-version.ts`                   | Lee `version.txt` (el commit que escribe el job `deploy`) para el campo `version` de `/health`; sin archivo, `dev`              |
 
 ## Conventions
 
@@ -65,6 +69,8 @@ npm run db:seed          # carreras y admin; con SEED_DEMO=true también la demo
 - Toda acción auditable se registra con `AuditService.record(tx, …)` dentro de la misma transacción del cambio; los códigos de `AUDIT_ACTIONS` se pueden sumar, nunca renombrar.
 - `passwordHash` se omite en toda consulta por defecto (`omit` global en `PrismaService`); solo `UsersService.findByEmailWithHash` lo pide.
 - Una tabla nueva se suma a `APP_TABLES` en `test/support/reset-db.ts`, o las e2e se contaminan entre sí.
+- En producción, el job `deploy` aplica las migraciones con `prisma migrate deploy` antes de subir el código; nunca se migra Supabase a mano. Una migración aplicada se corrige con otra nueva, no con `git revert`.
+- Cuando un cambio toca el contrato, se fusiona y despliega primero la API y después la web.
 
 ## Gotchas
 
@@ -82,6 +88,9 @@ npm run db:seed          # carreras y admin; con SEED_DEMO=true también la demo
 - Los guards corren antes del `ValidationPipe`: un límite de peticiones también cuenta las que después se rechazan con 400.
 - Una prueba unitaria que usa `plainToInstance` con `@Type` o conversión implícita necesita `import 'reflect-metadata'` al inicio; en la app lo carga Nest.
 - Hoy las rutas fuera de `/api/v1` responden el 404 en HTML de Express, no por el filtro (hallazgo abierto en `docs/reviews/2026-09-25-cafeta-api-main.md`).
+- En producción, `DATABASE_URL` y `DIRECT_URL` salen las dos del Session pooler de Supabase (`*.pooler.supabase.com:5432`, usuario `postgres.<ref>`). El host directo `db.<ref>.supabase.co` solo responde por IPv6 y no llega desde Actions ni App Service (`P1001` o `DATABASE_UNAVAILABLE`).
+- Las credenciales federadas de Azure usan los subjects inmutables de GitHub (`repo:hjmnz-dev@161862580/<repo>@<id>:environment:production`); con el formato viejo, `azure/login` falla con `AADSTS70021`.
+- La CLI de Azure en la PC lee, pero crear o cambiar recursos exige MFA: esos cambios se hacen en Cloud Shell.
 
 ## Agent skills
 
@@ -101,5 +110,6 @@ Declined: skills para `@nestjs/jwt`, `@nestjs/throttler` y `bcryptjs` (los cubre
 - 0003 Auditoría y baja lógica (`docs/specs/0003-auditoria-baja-logica/index.md`)
 - 0004 Registro, inicio y cierre de sesión (`docs/specs/0004-registro-inicio-cierre-sesion/index.md`)
 - 0005 Publicar y ver el feed (`docs/specs/0005-publicar-ver-feed/index.md`)
+- 0006 Despliegue de los tres repos (`docs/specs/0006-despliegue-tres-repos/index.md`)
 
 _Drafted by /audit from the repo, worth a quick human pass. Edit freely: once a line stops matching this draft, later runs treat it as curated and will flag rather than overwrite it._
