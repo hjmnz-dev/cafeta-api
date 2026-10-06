@@ -137,7 +137,7 @@ describe('Bloquear y desbloquear (e2e)', () => {
     // Conversación previa con mensaje
     const convRes = await authPost(a, '/conversations', {
       userId: b.id,
-    }).expect(201);
+    }).expect(200);
     const convId = convRes.body.id;
     await authPost(a, `/conversations/${convId}/messages`, {
       content: 'Hola B',

@@ -39,6 +39,7 @@ export class BlocksController {
 
   /** Bloquear a un usuario. */
   @Post('users/:userId/block')
+  @HttpCode(200)
   block(
     @Param('userId', ParseUUIDPipe) userId: string,
     @CurrentUser() user: AuthenticatedUser,
