@@ -2,6 +2,7 @@ import { plainToInstance } from 'class-transformer';
 import {
   IsEnum,
   IsInt,
+  IsOptional,
   IsString,
   IsUrl,
   Matches,
@@ -78,6 +79,17 @@ export class EnvironmentVariables {
   @IsInt()
   @Min(1)
   POST_RATE_LIMIT: number = 10;
+
+  // Blob Storage de los archivos (spec 0008, decisión 13). Opcional: sin ella
+  // la API arranca y la subida responde STORAGE_UNAVAILABLE.
+  @IsOptional()
+  @IsString()
+  AZURE_STORAGE_CONNECTION_STRING?: string;
+
+  @Matches(/^[a-z0-9-]{3,63}$/, {
+    message: 'AZURE_STORAGE_CONTAINER debe ser un nombre de contenedor válido',
+  })
+  AZURE_STORAGE_CONTAINER: string = 'media';
 }
 
 // Si falta una variable o es inválida, la API no arranca y dice cuál.

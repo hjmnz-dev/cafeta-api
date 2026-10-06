@@ -4,8 +4,11 @@ import type { PostViewRow } from './post-queries.js';
 
 const iso = (date: Date | null): string | null => date?.toISOString() ?? null;
 
+// Convierte la clave guardada en un enlace de lectura (MediaUrlService.urlFor).
+export type UrlFor = (key: string) => string;
+
 // Fila de Prisma → vista pública. No expone correo, rol ni nada más de users.
-export function toPostView(row: PostViewRow): PostViewDto {
+export function toPostView(row: PostViewRow, urlFor: UrlFor): PostViewDto {
   const profile = row.author.profile;
   return {
     id: row.id,
@@ -19,6 +22,11 @@ export function toPostView(row: PostViewRow): PostViewDto {
     codeSnippet: row.codeSnippet,
     groupName: row.groupName,
     groupSpots: row.groupSpots,
+    media: row.media.map((m) => ({
+      url: urlFor(m.storageKey),
+      mediaType: m.mediaType,
+      mimeType: m.mimeType,
+    })),
     author: {
       id: row.author.id,
       handle: profile?.handle ?? '',
@@ -33,11 +41,15 @@ export function toPostView(row: PostViewRow): PostViewDto {
 
 // Se piden limit + 1 filas: si llegó la extra, hay otra página y el cursor es
 // el id de la última que se devuelve.
-export function toPostPage(rows: PostViewRow[], limit: number): PostPageDto {
+export function toPostPage(
+  rows: PostViewRow[],
+  limit: number,
+  urlFor: UrlFor,
+): PostPageDto {
   const items = rows.slice(0, limit);
   const last = items.at(-1);
   return {
-    items: items.map(toPostView),
+    items: items.map((row) => toPostView(row, urlFor)),
     nextCursor: rows.length > limit && last ? last.id : null,
   };
 }

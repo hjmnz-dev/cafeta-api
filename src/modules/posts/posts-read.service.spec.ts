@@ -1,5 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import type { PrismaService } from '../../prisma/prisma.service.js';
+import type { MediaUrlService } from '../uploads/media-url.service.js';
 import {
   afterCursor,
   authorWhere,
@@ -23,7 +24,10 @@ function setup(
     findUnique: vi.fn().mockResolvedValue(cursorPost),
     count: vi.fn().mockResolvedValue(7),
   };
-  const service = new PostsReadService({ post } as unknown as PrismaService);
+  const service = new PostsReadService(
+    { post } as unknown as PrismaService,
+    { urlFor: (key: string) => key } as unknown as MediaUrlService,
+  );
   return { service, post };
 }
 

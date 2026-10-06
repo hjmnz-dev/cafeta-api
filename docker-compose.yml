@@ -1,4 +1,5 @@
-# PostgreSQL local: base `cafeta` (desarrollo) y `cafeta_test` (pruebas e2e).
+# PostgreSQL local: base `cafeta` (desarrollo) y `cafeta_test` (pruebas e2e),
+# y Azurite, el emulador de Azure Blob para los archivos (spec 0008, decisión 13).
 # Arranca con: npm run db:up
 services:
   postgres:
@@ -18,5 +19,14 @@ services:
       timeout: 5s
       retries: 10
 
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite
+    command: azurite-blob --blobHost 0.0.0.0 --location /data --skipApiVersionCheck
+    ports:
+      - '10000:10000'
+    volumes:
+      - azuritedata:/data
+
 volumes:
   pgdata:
+  azuritedata:
