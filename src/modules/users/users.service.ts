@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import type {
   Prisma,
+  ProfileVisibility,
   Role,
+  TagCategory,
   VerificationStatus,
 } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
@@ -39,7 +41,17 @@ const CURRENT_USER_SELECT = {
   profile: { select: { handle: true, displayName: true, careerId: true } },
 } as const;
 
+export interface ProfileRecord {
+  handle: string;
+  displayName: string;
+  bio: string | null;
+  careerName: string | null;
+  verified: boolean;
+  tags: { label: string; category: TagCategory }[];
+}
+
 type UserWriter = Pick<Prisma.TransactionClient, 'user'>;
+type ProfileWriter = Pick<Prisma.TransactionClient, 'profile'>;
 
 // Dueño de users, profiles y notification_preferences (spec 0004).
 @Injectable()
@@ -89,6 +101,56 @@ export class UsersService {
       select: CURRENT_USER_SELECT,
     });
     return user ? toCurrentUser(user) : null;
+  }
+
+  async findProfile(userId: string): Promise<ProfileRecord | null> {
+    const profile = await this.prisma.profile.findUnique({
+      where: { userId },
+      select: {
+        handle: true,
+        displayName: true,
+        bio: true,
+        career: { select: { name: true } },
+        user: { select: { verificationStatus: true } },
+        tags: {
+          orderBy: { position: 'asc' },
+          select: { label: true, category: true },
+        },
+      },
+    });
+    if (!profile) return null;
+    return {
+      handle: profile.handle,
+      displayName: profile.displayName,
+      bio: profile.bio,
+      careerName: profile.career?.name ?? null,
+      verified: profile.user.verificationStatus === 'VERIFIED',
+      tags: profile.tags,
+    };
+  }
+
+  async findVisibility(userId: string): Promise<ProfileVisibility> {
+    const profile = await this.prisma.profile.findUniqueOrThrow({
+      where: { userId },
+      select: { visibility: true },
+    });
+    return profile.visibility;
+  }
+
+  // Cambia la privacidad y devuelve la que tenía antes.
+  async updateVisibility(
+    tx: ProfileWriter,
+    userId: string,
+    visibility: ProfileVisibility,
+  ): Promise<ProfileVisibility> {
+    const before = await tx.profile.findUniqueOrThrow({
+      where: { userId },
+      select: { visibility: true },
+    });
+    if (before.visibility !== visibility) {
+      await tx.profile.update({ where: { userId }, data: { visibility } });
+    }
+    return before.visibility;
   }
 }
 

@@ -10,6 +10,11 @@ import {
 // PostgreSQL; aquí se fija la forma de cada filtro.
 const ME = '01926f00-0000-7000-8000-000000000001';
 const CAREER = '01926f00-0000-7000-8000-0000000000c1';
+// Un filtro cualquiera: la regla real vive en VisibilityService.
+const VISIBLE_AUTHOR = { id: 'visible' };
+const VISIBLE = {
+  OR: [{ type: 'ANNOUNCEMENT' }, { author: VISIBLE_AUTHOR }],
+};
 
 describe('VISIBLE_POST', () => {
   it('excluye archivadas, desactivadas y de autores desactivados', () => {
@@ -29,9 +34,10 @@ describe('POST_ORDER', () => {
 
 describe('feedWhere', () => {
   it('AC-4: "Para ti" junta mías, seguidos ACCEPTED activos y anuncios, siempre visibles', () => {
-    expect(feedWhere(ME)).toEqual({
+    expect(feedWhere(ME, VISIBLE_AUTHOR)).toEqual({
       AND: [
         VISIBLE_POST,
+        VISIBLE,
         {
           OR: [
             { authorId: ME },
@@ -54,12 +60,20 @@ describe('feedWhere', () => {
   });
 
   it('AC-6: la pestaña de carrera filtra por la carrera del autor sin mirar seguimientos', () => {
-    const where = feedWhere(ME, CAREER);
+    const where = feedWhere(ME, VISIBLE_AUTHOR, CAREER);
     expect(where).toEqual({
-      AND: [VISIBLE_POST, { author: { profile: { careerId: CAREER } } }],
+      AND: [
+        VISIBLE_POST,
+        VISIBLE,
+        { author: { profile: { careerId: CAREER } } },
+      ],
     });
     expect(JSON.stringify(where)).not.toContain('followers');
-    expect(JSON.stringify(where)).not.toContain('ANNOUNCEMENT');
+  });
+
+  it('decisión 15: las dos pestañas exigen un autor visible, salvo los anuncios', () => {
+    expect(feedWhere(ME, VISIBLE_AUTHOR).AND).toContainEqual(VISIBLE);
+    expect(feedWhere(ME, VISIBLE_AUTHOR, CAREER).AND).toContainEqual(VISIBLE);
   });
 });
 
