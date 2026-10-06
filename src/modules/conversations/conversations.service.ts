@@ -33,7 +33,7 @@ export class ConversationsService {
   ) {}
 
   // Una sola conversación por par: si ya existe, se devuelve la misma.
-  // TODO(29): rechazar si hay un bloqueo entre los dos.
+  // Si hay un bloqueo entre los dos, 404 como si no existiera (decisión 29).
   async open(
     dto: OpenConversationDto,
     userId: string,
@@ -45,6 +45,22 @@ export class ConversationsService {
       });
     }
     if (!(await this.users.isActive(dto.userId))) {
+      throw new NotFoundException({
+        message: 'El usuario no existe',
+        code: 'USER_NOT_FOUND',
+      });
+    }
+    const hasBlock = await this.prisma.block.findFirst({
+      where: {
+        OR: [
+          { blockerId: userId, blockedId: dto.userId },
+          { blockerId: dto.userId, blockedId: userId },
+        ],
+        deactivatedAt: null,
+      },
+      select: { id: true },
+    });
+    if (hasBlock) {
       throw new NotFoundException({
         message: 'El usuario no existe',
         code: 'USER_NOT_FOUND',
