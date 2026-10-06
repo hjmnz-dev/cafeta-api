@@ -10,6 +10,7 @@ import { AuthModule } from './modules/auth/auth.module.js';
 import { CareersModule } from './modules/careers/careers.module.js';
 import { PostsModule } from './modules/posts/posts.module.js';
 import { RateLimitModule } from './common/rate-limit/rate-limit.module.js';
+import { ConversationsModule } from './modules/conversations/conversations.module.js';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { RateLimitModule } from './common/rate-limit/rate-limit.module.js';
     CareersModule,
     AuthModule,
     PostsModule,
+    ConversationsModule,
   ],
   providers: [{ provide: APP_FILTER, useClass: HttpExceptionFilter }],
 })

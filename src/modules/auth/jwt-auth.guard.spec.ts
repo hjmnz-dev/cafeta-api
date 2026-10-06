@@ -2,6 +2,7 @@ import type { ExecutionContext } from '@nestjs/common';
 import type { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import type { AuthenticatedUser } from '../../common/actor/actor-context.js';
+import { AccessTokenService } from './access-token.service.js';
 import { JwtAuthGuard } from './jwt-auth.guard.js';
 import type { SessionsService, ValidSession } from './sessions.service.js';
 
@@ -41,7 +42,11 @@ function setup({
   } as unknown as Reflector;
   const findValid = vi.fn().mockResolvedValue(session);
   const sessions = { findValid } as unknown as SessionsService;
-  return { guard: new JwtAuthGuard(reflector, jwt, sessions), jwt, findValid };
+  return {
+    guard: new JwtAuthGuard(reflector, new AccessTokenService(jwt, sessions)),
+    jwt,
+    findValid,
+  };
 }
 
 const sign = (
