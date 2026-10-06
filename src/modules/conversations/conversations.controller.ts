@@ -5,15 +5,21 @@ import {
   HttpCode,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import type { AuthenticatedUser } from '../../common/actor/actor-context.js';
+import { Actor } from '../../common/actor/actor.decorator.js';
+import type {
+  ActorContext,
+  AuthenticatedUser,
+} from '../../common/actor/actor-context.js';
 import { CurrentUser } from '../../common/actor/current-user.decorator.js';
 import { PageQueryDto } from '../posts/dto/page-query.dto.js';
 import { ConversationsReadService } from './conversations-read.service.js';
 import { ConversationsService } from './conversations.service.js';
+import { EditMessageDto } from './dto/edit-message.dto.js';
 import {
   ConversationPageDto,
   ConversationViewDto,
@@ -21,6 +27,7 @@ import {
 import { MessagePageDto, MessageViewDto } from './dto/message-view.dto.js';
 import { OpenConversationDto } from './dto/open-conversation.dto.js';
 import { SendMessageDto } from './dto/send-message.dto.js';
+import { MessageEditsService } from './message-edits.service.js';
 
 @ApiTags('conversations')
 @ApiBearerAuth()
@@ -29,6 +36,7 @@ export class ConversationsController {
   constructor(
     private readonly conversations: ConversationsService,
     private readonly reads: ConversationsReadService,
+    private readonly edits: MessageEditsService,
   ) {}
 
   @Get()
@@ -82,5 +90,29 @@ export class ConversationsController {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<void> {
     return this.conversations.markRead(id, user.id);
+  }
+
+  /** Corrige un mensaje propio; queda marcado como editado. */
+  @Patch(':id/messages/:messageId')
+  edit(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('messageId', ParseUUIDPipe) messageId: string,
+    @Body() dto: EditMessageDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Actor() actor: ActorContext,
+  ): Promise<MessageViewDto> {
+    return this.edits.edit(id, messageId, dto, user.id, actor);
+  }
+
+  /** Retira un mensaje propio (baja lógica: se conserva para auditoría). */
+  @Post(':id/messages/:messageId/deactivate')
+  @HttpCode(204)
+  deactivate(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('messageId', ParseUUIDPipe) messageId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Actor() actor: ActorContext,
+  ): Promise<void> {
+    return this.edits.deactivate(id, messageId, user.id, actor);
   }
 }
