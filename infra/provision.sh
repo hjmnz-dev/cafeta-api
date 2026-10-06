@@ -7,6 +7,7 @@
 # Se puede volver a correr: lo que ya existe no se crea de nuevo. Para rotar secretos:
 #   ROTATE_JWT=1  genera un JWT_SECRET nuevo (cierra todas las sesiones).
 #   ROTATE_DB=1   vuelve a pedir DATABASE_URL y DIRECT_URL.
+# Opcional: SENTRY_DSN=<DSN de cafeta-api> lo guarda como app setting (spec 0007).
 # Los pasos y lo que va después están en infra/README.md.
 set -euo pipefail
 
@@ -174,6 +175,13 @@ if [[ "$ROTATE_DB" == "1" ]] || ! has_setting DATABASE_URL || ! has_setting DIRE
   echo "DATABASE_URL y DIRECT_URL guardadas."
 else
   echo "DATABASE_URL y DIRECT_URL ya existen; se dejan igual (usa ROTATE_DB=1 para cambiarlas)."
+fi
+
+# Monitoreo de errores (spec 0007): el DSN no es secreto, pero tampoco va en el repo.
+if [[ -n "${SENTRY_DSN:-}" ]]; then
+  az webapp config appsettings set -g "$RG" -n "$API" -o none \
+    --settings "SENTRY_DSN=$SENTRY_DSN"
+  echo "SENTRY_DSN guardado."
 fi
 
 # ── 6. Identidad de despliegue con OIDC ──
