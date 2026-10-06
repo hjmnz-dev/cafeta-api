@@ -1,6 +1,12 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
 import type { Prisma } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { canSeeContent } from '../visibility/visibility-rules.js';
+import { VisibilityService } from '../visibility/visibility.service.js';
 import type { FeedQueryDto } from './dto/feed-query.dto.js';
 import type { PageQueryDto } from './dto/page-query.dto.js';
 import type { PostCountDto, PostPageDto } from './dto/post-page.dto.js';
@@ -13,18 +19,44 @@ import {
 } from './post-queries.js';
 import { toPostPage } from './post-view.mapper.js';
 
-// Lecturas de publicaciones (spec 0005). Aquí se sumarán los filtros de
-// privacidad (funcionalidad 15) y de bloqueos (funcionalidad 29).
+// Lecturas de publicaciones (spec 0005). La privacidad y los bloqueos los
+// decide VisibilityService (decisión 15).
 @Injectable()
 export class PostsReadService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly visibility: VisibilityService,
+  ) {}
 
   feed(userId: string, query: FeedQueryDto): Promise<PostPageDto> {
-    return this.page(feedWhere(userId, query.careerId), query);
+    const visibleAuthor = this.visibility.contentAuthorWhere(userId);
+    return this.page(feedWhere(userId, visibleAuthor, query.careerId), query);
   }
 
-  byAuthor(authorId: string, query: PageQueryDto): Promise<PostPageDto> {
+  // Publicaciones de un perfil: 404 si quien mira no ve el perfil, 403 si lo ve
+  // limitado (FOLLOWERS sin seguirlo, o PRIVATE).
+  async byAuthor(
+    viewerId: string,
+    authorId: string,
+    query: PageQueryDto,
+  ): Promise<PostPageDto> {
+    const facts = await this.visibility.visibleProfileFacts(viewerId, authorId);
+    if (!canSeeContent(facts)) {
+      throw new ForbiddenException({
+        message: 'El perfil es privado para ti',
+        code: 'PROFILE_RESTRICTED',
+      });
+    }
     return this.page(authorWhere(authorId), query);
+  }
+
+  // El conteo forma parte del perfil limitado: solo pide que el perfil se vea.
+  async countVisibleByAuthor(
+    viewerId: string,
+    authorId: string,
+  ): Promise<PostCountDto> {
+    await this.visibility.visibleProfileFacts(viewerId, authorId);
+    return this.countByAuthor(authorId);
   }
 
   async countByAuthor(authorId: string): Promise<PostCountDto> {
