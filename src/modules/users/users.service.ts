@@ -6,6 +6,7 @@ import type {
   TagCategory,
   VerificationStatus,
 } from '../../generated/prisma/client.js';
+import { ACTIVE } from '../../common/soft-delete/soft-delete.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 
 export interface NewStudent {
@@ -101,6 +102,11 @@ export class UsersService {
       select: CURRENT_USER_SELECT,
     });
     return user ? toCurrentUser(user) : null;
+  }
+
+  // Cuenta que existe y no está desactivada (para abrir una conversación).
+  async isActive(id: string): Promise<boolean> {
+    return (await this.prisma.user.count({ where: { id, ...ACTIVE } })) > 0;
   }
 
   async findProfile(userId: string): Promise<ProfileRecord | null> {

@@ -1,30 +1,15 @@
 import {
   Injectable,
-  UnauthorizedException,
   type CanActivate,
   type ExecutionContext,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { JwtService } from '@nestjs/jwt';
 import type { Request } from 'express';
 import type { AuthenticatedUser } from '../../common/actor/actor-context.js';
 import { IS_PUBLIC_KEY } from '../../common/decorators/public.decorator.js';
-import { SessionsService } from './sessions.service.js';
-import { isTokenPayload } from './token-payload.js';
+import { AccessTokenService } from './access-token.service.js';
 
 type AuthRequest = Request & { user?: AuthenticatedUser };
-
-const unauthorized = () =>
-  new UnauthorizedException({
-    message: 'Se requiere una sesión',
-    code: 'UNAUTHORIZED',
-  });
-
-const revoked = () =>
-  new UnauthorizedException({
-    message: 'La sesión ya no es válida',
-    code: 'SESSION_REVOKED',
-  });
 
 // Guard global (spec 0004): toda ruta exige un JWT con su sesión vigente,
 // salvo las marcadas @Public(). El rol sale de la base, no del token.
@@ -32,8 +17,7 @@ const revoked = () =>
 export class JwtAuthGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
-    private readonly jwt: JwtService,
-    private readonly sessions: SessionsService,
+    private readonly tokens: AccessTokenService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -44,31 +28,10 @@ export class JwtAuthGuard implements CanActivate {
     if (isPublic) return true;
 
     const req = context.switchToHttp().getRequest<AuthRequest>();
-    const token = bearerToken(req.headers.authorization);
-    if (!token) throw unauthorized();
-
-    const payload = await this.verify(token);
-    const session = await this.sessions.findValid(payload.jti, new Date());
-    if (!session || session.userId !== payload.sub) throw revoked();
-
-    req.user = {
-      id: session.userId,
-      role: session.role,
-      sessionId: session.id,
-    };
+    req.user = await this.tokens.authenticate(
+      bearerToken(req.headers.authorization),
+    );
     return true;
-  }
-
-  private async verify(token: string) {
-    try {
-      const payload: unknown = await this.jwt.verifyAsync(token, {
-        algorithms: ['HS256'],
-      });
-      if (!isTokenPayload(payload)) throw unauthorized();
-      return payload;
-    } catch {
-      throw unauthorized();
-    }
   }
 }
 

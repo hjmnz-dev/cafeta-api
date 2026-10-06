@@ -6,6 +6,7 @@ import { AuditModule } from '../../common/audit/audit.module.js';
 import type { EnvironmentVariables } from '../../config/env.validation.js';
 import { CareersModule } from '../careers/careers.module.js';
 import { UsersModule } from '../users/users.module.js';
+import { AccessTokenService } from './access-token.service.js';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
 import { JwtAuthGuard } from './jwt-auth.guard.js';
@@ -28,8 +29,10 @@ import { SessionsService } from './sessions.service.js';
   providers: [
     AuthService,
     SessionsService,
+    AccessTokenService,
     // Guard global: toda ruta exige sesión salvo las @Public().
     { provide: APP_GUARD, useClass: JwtAuthGuard },
   ],
+  exports: [AccessTokenService],
 })
 export class AuthModule {}
