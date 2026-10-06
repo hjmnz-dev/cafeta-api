@@ -33,6 +33,8 @@ const created: PostViewRow = {
   location: 'Biblioteca',
   createdAt: new Date('2026-09-26T10:00:00.000Z'),
   editedAt: null,
+  archivedAt: null,
+  deactivatedAt: null,
   eventStartsAt: null,
   eventLocation: null,
   codeSnippet: null,
