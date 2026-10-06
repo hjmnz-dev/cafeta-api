@@ -1,3 +1,4 @@
+import type { MessageRefDto } from '../conversations/dto/message-ref.dto.js';
 import type { MessageViewDto } from '../conversations/dto/message-view.dto.js';
 
 // Eventos que la API emite por el socket (spec 0008, decisión 25). Cada
@@ -5,6 +6,8 @@ import type { MessageViewDto } from '../conversations/dto/message-view.dto.js';
 // por nombre.
 export interface ServerEvents {
   'message:new': MessageViewDto;
+  'message:updated': MessageViewDto;
+  'message:deactivated': MessageRefDto;
 }
 
 export type ServerEventName = keyof ServerEvents;
