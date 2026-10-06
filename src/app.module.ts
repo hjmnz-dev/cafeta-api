@@ -11,6 +11,9 @@ import { CareersModule } from './modules/careers/careers.module.js';
 import { PostsModule } from './modules/posts/posts.module.js';
 import { RateLimitModule } from './common/rate-limit/rate-limit.module.js';
 import { ConversationsModule } from './modules/conversations/conversations.module.js';
+import { ProfilesModule } from './modules/profiles/profiles.module.js';
+import { MonitoringModule } from './common/monitoring/monitoring.module.js';
+import { MonitoringTestModule } from './modules/monitoring/monitoring.module.js';
 
 @Module({
   imports: [
@@ -27,6 +30,9 @@ import { ConversationsModule } from './modules/conversations/conversations.modul
     CareersModule,
     AuthModule,
     PostsModule,
+    MonitoringModule,
+    MonitoringTestModule,
+    ProfilesModule,
     ConversationsModule,
   ],
   providers: [{ provide: APP_FILTER, useClass: HttpExceptionFilter }],

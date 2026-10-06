@@ -289,7 +289,7 @@ describe('Publicaciones (e2e)', () => {
     expect(contents(res.body)).toEqual(['de software']);
   });
 
-  it('AC-3 y AC-14: mis publicaciones y su conteo; las de otro dan 403 y access.denied', async () => {
+  it('AC-3 y AC-14: mis publicaciones y su conteo; las de un perfil limitado dan 403 y access.denied', async () => {
     const ana = await signUp('ana');
     const beto = await signUp('beto');
     await seedPost(ana.id, 'vieja', { createdAt: new Date('2026-01-01') });
@@ -303,12 +303,23 @@ describe('Publicaciones (e2e)', () => {
     const count = await get(ana, `/users/${ana.id}/posts/count`).expect(200);
     expect(count.body).toEqual({ count: 2 });
 
+    // Beto es PUBLIC: Ana ve lo suyo (decisión 15).
+    const public_ = await get(ana, `/users/${beto.id}/posts`).expect(200);
+    expect(contents(public_.body)).toEqual(['de beto']);
+
+    await prisma.profile.update({
+      where: { userId: beto.id },
+      data: { visibility: 'FOLLOWERS' },
+    });
     const denied = await get(ana, `/users/${beto.id}/posts`).expect(403);
-    expect(denied.body.code).toBe('FORBIDDEN');
-    await get(ana, `/users/${beto.id}/posts/count`).expect(403);
+    expect(denied.body.code).toBe('PROFILE_RESTRICTED');
+    const betoCount = await get(ana, `/users/${beto.id}/posts/count`).expect(
+      200,
+    );
+    expect(betoCount.body).toEqual({ count: 1 });
     expect(
       await prisma.auditLog.count({ where: { action: 'access.denied' } }),
-    ).toBe(2);
+    ).toBe(1);
 
     await get(ana, '/users/no-es-uuid/posts').expect(400);
   });

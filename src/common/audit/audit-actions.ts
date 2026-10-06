@@ -45,6 +45,8 @@ export const AUDIT_ACTIONS = [
   // Carreras (las usa el módulo de prueba de las e2e)
   'career.deactivate',
   'career.reactivate',
+  // Monitoreo (spec 0007): el endpoint de prueba que fuerza un error
+  'monitoring.test',
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
@@ -63,6 +65,7 @@ export const AUDIT_ENTITY_TYPES = [
   'block',
   'report',
   'route',
+  'monitoring',
 ] as const;
 
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number];
