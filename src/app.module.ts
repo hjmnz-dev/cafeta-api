@@ -15,6 +15,7 @@ import { ConversationsModule } from './modules/conversations/conversations.modul
 import { ProfilesModule } from './modules/profiles/profiles.module.js';
 import { MonitoringModule } from './common/monitoring/monitoring.module.js';
 import { MonitoringTestModule } from './modules/monitoring/monitoring.module.js';
+import { FollowsModule } from './modules/follows/follows.module.js';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { MonitoringTestModule } from './modules/monitoring/monitoring.module.js'
     ProfilesModule,
     ConversationsModule,
     UploadsModule,
+    FollowsModule,
   ],
   providers: [{ provide: APP_FILTER, useClass: HttpExceptionFilter }],
 })
