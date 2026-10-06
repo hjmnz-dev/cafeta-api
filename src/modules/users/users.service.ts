@@ -46,6 +46,9 @@ export interface ProfileRecord {
   handle: string;
   displayName: string;
   bio: string | null;
+  location: string | null;
+  avatarKey: string | null;
+  careerId: string | null;
   careerName: string | null;
   verified: boolean;
   tags: { label: string; category: TagCategory }[];
@@ -116,6 +119,9 @@ export class UsersService {
         handle: true,
         displayName: true,
         bio: true,
+        location: true,
+        avatarKey: true,
+        careerId: true,
         career: { select: { name: true } },
         user: { select: { verificationStatus: true } },
         tags: {
@@ -129,6 +135,9 @@ export class UsersService {
       handle: profile.handle,
       displayName: profile.displayName,
       bio: profile.bio,
+      location: profile.location,
+      avatarKey: profile.avatarKey,
+      careerId: profile.careerId,
       careerName: profile.career?.name ?? null,
       verified: profile.user.verificationStatus === 'VERIFIED',
       tags: profile.tags,
