@@ -128,6 +128,33 @@ Al final lista lo que quedó en cada ambiente:
 
 **Plan B** si un `deploy` falla en `azure/webapps-deploy` por autenticación: cambia ese paso por `az webapp deploy --resource-group rg-cafeta --name ${{ vars.AZURE_WEBAPP_NAME }} --src-path <api.zip o app.zip> --type zip`, con el mismo `azure/login` antes.
 
+## 5. Archivos en Blob Storage
+
+Las fotos, videos y PDF (funcionalidad 13) viven en la cuenta `stcafetahj01` (Standard LRS, Canada Central, en `rg-cafeta`) dentro del contenedor privado `media`: nadie los lee sin un enlace SAS de la API. En Cloud Shell, modo Bash, una sola vez:
+
+```bash
+RG=rg-cafeta ST=stcafetahj01 API=cafeta-api-hj01
+az provider register --namespace Microsoft.Storage --wait
+az storage account create -g $RG -n $ST -l canadacentral \
+  --sku Standard_LRS --kind StorageV2 --access-tier Hot \
+  --https-only true --min-tls-version TLS1_2 \
+  --allow-blob-public-access false -o none
+CONN=$(az storage account show-connection-string -g $RG -n $ST -o tsv)
+az storage container create --name media --public-access off --connection-string "$CONN" -o none
+az webapp config appsettings set -g $RG -n $API \
+  --settings AZURE_STORAGE_CONNECTION_STRING="$CONN" -o none
+unset CONN
+az storage account show -g $RG -n $ST --query allowBlobPublicAccess   # false: privado
+```
+
+La cadena de conexión lleva la clave de la cuenta: no se imprime ni queda en el historial (va en `CONN` y se borra). Guardar la app setting reinicia la API. Si `stcafetahj01` ya está tomado en Azure, usa otro nombre y anótalo aquí.
+
+| Si ves                                | Haz esto                                                                         |
+| ------------------------------------- | -------------------------------------------------------------------------------- |
+| `StorageAccountAlreadyTaken`          | El nombre es global. Cambia `ST` (3 a 24 minúsculas o números) y corre de nuevo. |
+| `RequestDisallowedByAzure`            | La región no está permitida. Revisa [Regiones permitidas](#regiones-permitidas). |
+| La API responde `STORAGE_UNAVAILABLE` | Falta `AZURE_STORAGE_CONNECTION_STRING` en la Web App o la cuenta no existe.     |
+
 ## Cómo funciona el día a día
 
 - Un push a `main` corre CI y, solo si todo pasa, `deploy`. Los PR y las otras ramas nunca despliegan.
@@ -159,6 +186,21 @@ Una vez, después del primer despliegue:
 - **API**: Startup command `node dist/main.js`, Web sockets encendido, **Health check** activo en `/api/v1/health`, y en **Environment variables** están `DATABASE_URL`, `DIRECT_URL`, `JWT_SECRET`, `WEB_ORIGIN` y `ADMIN_ORIGIN` (los orígenes sin barra al final).
 - **Web y admin**: Startup command `node server.mjs`, Web sockets apagado, sin health check.
 - **`id-cafeta-deploy`**: tres credenciales federadas (`github-api`, `github-web`, `github-admin`) y el rol `Website Contributor` solo sobre las tres Web Apps. Cada subject usa el formato inmutable de GitHub, con los números del dueño y del repo: `repo:hjmnz-dev@161862580/cafeta-api@1387792079:environment:production`. Si `azure/login` falla con `AADSTS70021`, compara el "subject claim" que imprime el log con el de la credencial y vuelve a correr `provision.sh`, que corrige los subjects viejos.
+
+## Monitoreo de errores
+
+Las tres apps envían sus errores inesperados a Sentry (spec 0007): la API desde su filtro de errores, y la web y el admin desde su pantalla de error. Sin DSN no se envía nada, así que en local, en las pruebas y en el CI no llega ningún evento.
+
+- **Dónde**: organización `cafeta-app` en [sentry.io](https://sentry.io), región Estados Unidos, plan gratis (Developer, un solo usuario). Proyectos `cafeta-api` (Node), `cafeta-web` y `cafeta-admin` (React).
+- **Valores**: `SENTRY_DSN` es un app setting de `cafeta-api-hj01`. En el ambiente `production` de la web y del admin van las variables `VITE_SENTRY_DSN`, `SENTRY_ORG` y `SENTRY_PROJECT`, y el secreto `SENTRY_AUTH_TOKEN` (token de organización, solo para subir source maps). El job `deploy` de la web y del admin falla si falta el DSN o el token.
+- **Cargar el DSN de la API** (Cloud Shell): `az webapp config appsettings set -g rg-cafeta -n cafeta-api-hj01 -o none --settings "SENTRY_DSN=<DSN>"`, o vuelve a correr `provision.sh` con `SENTRY_DSN=<DSN>`. Sin él, al arrancar en producción el log dice `Monitoreo de errores apagado: falta SENTRY_DSN`.
+- **Cargar los de la web y el admin**: `gh variable set VITE_SENTRY_DSN -e production -R hjmnz-dev/<repo> --body "<DSN>"` y `gh secret set SENTRY_AUTH_TOKEN -e production -R hjmnz-dev/<repo>` (lo pide sin mostrarlo), en `cafeta-app` y `cafeta-admin-web`.
+- **Avisos**: cada proyecto tiene una regla que manda un correo la primera vez que aparece un issue nuevo; las repeticiones no mandan correos nuevos.
+- **Probarlo en producción**: en la API, `POST /api/v1/monitoring/test-error` con un token de admin responde 500 y crea el issue `Prueba de monitoreo forzada por un admin`. En la web y el admin, abre `/__prueba-error`: muestra `Algo salió mal` con un código de 8 caracteres que encuentra el evento en Sentry.
+- **Rotar el token**: crea uno nuevo en Sentry (**Settings, Auth Tokens**, token de organización), cárgalo con `gh secret set` en los dos repos y borra el viejo.
+- **Límites del plan gratis**: unos 5000 errores al mes (por confirmar en la página de la organización, **Subscription**). Cada app manda como máximo 10 eventos por minuto del mismo error, para que un bucle no se coma la cuota. Si la cuota se acaba, los errores nuevos no llegan hasta el mes siguiente; el log stream de App Service sigue escribiéndolos.
+- **Disponibilidad**: si el plan trae monitores de uptime, hay uno sobre `https://cafeta-api-hj01.azurewebsites.net/api/v1/health` que avisa por correo cuando falla. Si no lo trae, queda pendiente en el Follow-up del spec 0007.
+- **Datos**: ningún evento lleva correo, nombre, contenido, cuerpos, headers, cookies, query strings ni IP; solo el id de la cuenta. Un `throw new Error(...)` nunca debe incluir datos personales en el mensaje.
 
 ## Costo
 

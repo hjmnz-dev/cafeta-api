@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { PostType } from '../../../generated/prisma/enums.js';
+import { MediaType, PostType } from '../../../generated/prisma/enums.js';
 
 export class PostAuthorDto {
   id: string;
@@ -15,6 +15,15 @@ export class PostAuthorDto {
   careerName: string | null;
   /** true si la cuenta está verificada. */
   verified: boolean;
+}
+
+export class PostMediaDto {
+  /** Enlace de lectura que vence en una hora como máximo. */
+  url: string;
+  @ApiProperty({ enum: MediaType, enumName: 'MediaType' })
+  mediaType: MediaType;
+  /** @example image/jpeg */
+  mimeType: string;
 }
 
 export class PostViewDto {
@@ -39,6 +48,8 @@ export class PostViewDto {
   groupName: string | null;
   @ApiProperty({ type: Number, nullable: true })
   groupSpots: number | null;
+  /** Adjuntos en su orden: hasta 4 imágenes, o 1 video, o 1 PDF. */
+  media: PostMediaDto[];
   author: PostAuthorDto;
   reactionCount: number;
   commentCount: number;

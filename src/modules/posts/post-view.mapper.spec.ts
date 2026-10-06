@@ -1,6 +1,8 @@
 import type { PostViewRow } from './post-queries.js';
 import { toPostPage, toPostView } from './post-view.mapper.js';
 
+const urlFor = (key: string) => `https://blob.test/${key}?sas`;
+
 // Vista pública de una publicación (spec 0005, AC-8): lo que ve la web y lo
 // que nunca sale de la base.
 const row = (overrides: Partial<PostViewRow> = {}): PostViewRow => ({
@@ -15,6 +17,9 @@ const row = (overrides: Partial<PostViewRow> = {}): PostViewRow => ({
   codeSnippet: null,
   groupName: null,
   groupSpots: null,
+  media: [
+    { storageKey: 'image/a.jpg', mediaType: 'IMAGE', mimeType: 'image/jpeg' },
+  ],
   author: {
     id: '01926f00-0000-7000-8000-000000000001',
     verificationStatus: 'VERIFIED',
@@ -29,8 +34,8 @@ const row = (overrides: Partial<PostViewRow> = {}): PostViewRow => ({
 });
 
 describe('toPostView', () => {
-  it('AC-8: convierte las fechas a ISO y lleva los conteos y los datos del autor', () => {
-    expect(toPostView(row())).toEqual({
+  it('AC-8: convierte las fechas a ISO y lleva los conteos, los datos del autor y el enlace de cada adjunto', () => {
+    expect(toPostView(row(), urlFor)).toEqual({
       id: '01926f00-0000-7000-8000-000000000065',
       type: 'EVENT',
       content: 'Hackathon',
@@ -42,6 +47,13 @@ describe('toPostView', () => {
       codeSnippet: null,
       groupName: null,
       groupSpots: null,
+      media: [
+        {
+          url: 'https://blob.test/image/a.jpg?sas',
+          mediaType: 'IMAGE',
+          mimeType: 'image/jpeg',
+        },
+      ],
       author: {
         id: '01926f00-0000-7000-8000-000000000001',
         handle: 'cgomez_intec',
@@ -55,7 +67,10 @@ describe('toPostView', () => {
   });
 
   it('las fechas opcionales vacías quedan en null', () => {
-    const view = toPostView(row({ editedAt: null, eventStartsAt: null }));
+    const view = toPostView(
+      row({ editedAt: null, eventStartsAt: null }),
+      urlFor,
+    );
     expect(view.editedAt).toBeNull();
     expect(view.eventStartsAt).toBeNull();
   });
@@ -65,6 +80,7 @@ describe('toPostView', () => {
       const base = row();
       const view = toPostView(
         row({ author: { ...base.author, verificationStatus: status } }),
+        urlFor,
       );
       expect(view.author.verified).toBe(false);
     }
@@ -79,13 +95,17 @@ describe('toPostView', () => {
           profile: { handle: 'cafeta', displayName: 'Cafeta', career: null },
         },
       }),
+      urlFor,
     );
     expect(view.author.careerName).toBeNull();
   });
 
   it('un autor sin perfil no rompe la vista', () => {
     const base = row();
-    const view = toPostView(row({ author: { ...base.author, profile: null } }));
+    const view = toPostView(
+      row({ author: { ...base.author, profile: null } }),
+      urlFor,
+    );
     expect(view.author).toMatchObject({
       handle: '',
       displayName: '',
@@ -94,7 +114,7 @@ describe('toPostView', () => {
   });
 
   it('no expone nada de users fuera del id y el verificado', () => {
-    const view = toPostView(row());
+    const view = toPostView(row(), urlFor);
     expect(Object.keys(view.author).sort()).toEqual([
       'careerName',
       'displayName',
@@ -111,18 +131,18 @@ describe('toPostPage', () => {
     Array.from({ length: n }, (_, i) => row({ id: `id-${i + 1}` }));
 
   it('AC-5: con una fila de más devuelve limit filas y el id de la última como cursor', () => {
-    const page = toPostPage(rows(4), 3);
+    const page = toPostPage(rows(4), 3, urlFor);
     expect(page.items.map((p) => p.id)).toEqual(['id-1', 'id-2', 'id-3']);
     expect(page.nextCursor).toBe('id-3');
   });
 
   it('AC-5: con exactamente limit filas no hay página siguiente', () => {
-    const page = toPostPage(rows(3), 3);
+    const page = toPostPage(rows(3), 3, urlFor);
     expect(page.items).toHaveLength(3);
     expect(page.nextCursor).toBeNull();
   });
 
   it('una lista vacía no tiene cursor', () => {
-    expect(toPostPage([], 20)).toEqual({ items: [], nextCursor: null });
+    expect(toPostPage([], 20, urlFor)).toEqual({ items: [], nextCursor: null });
   });
 });
