@@ -1,4 +1,4 @@
-import { plainToInstance } from 'class-transformer';
+import { plainToInstance, Transform } from 'class-transformer';
 import {
   IsEnum,
   IsInt,
@@ -90,6 +90,19 @@ export class EnvironmentVariables {
     message: 'AZURE_STORAGE_CONTAINER debe ser un nombre de contenedor válido',
   })
   AZURE_STORAGE_CONTAINER: string = 'media';
+
+  // DSN del proyecto cafeta-api en Sentry (spec 0007). Opcional: sin él no se
+  // envía nada. Vacío cuenta como ausente. instrument.ts la lee de process.env
+  // porque corre antes que ConfigModule; aquí solo sirve para el aviso de arranque.
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' && value.trim() === '' ? undefined : value,
+  )
+  @IsOptional()
+  @IsUrl(
+    { require_protocol: true },
+    { message: 'SENTRY_DSN debe ser una URL https:// de Sentry' },
+  )
+  SENTRY_DSN?: string;
 }
 
 // Si falta una variable o es inválida, la API no arranca y dice cuál.

@@ -1,6 +1,8 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import type { PrismaService } from '../../prisma/prisma.service.js';
 import type { MediaUrlService } from '../uploads/media-url.service.js';
+import type { VisibilityFacts } from '../visibility/visibility-rules.js';
+import type { VisibilityService } from '../visibility/visibility.service.js';
 import {
   afterCursor,
   authorWhere,
@@ -15,20 +17,35 @@ import { PostsReadService } from './posts-read.service.js';
 const ME = '01926f00-0000-7000-8000-000000000001';
 const CURSOR = '01926f00-0000-7000-8000-000000000065';
 const CURSOR_AT = new Date('2026-09-26T10:00:00.000Z');
+const OTHER = '01926f00-0000-7000-8000-000000000002';
+const VISIBLE_AUTHOR = { id: 'visible' };
+const PUBLIC_FACTS: VisibilityFacts = {
+  isSelf: false,
+  ownerActive: true,
+  visibility: 'PUBLIC',
+  followStatus: null,
+  blocked: false,
+};
 
 function setup(
   cursorPost: { createdAt: Date } | null = { createdAt: CURSOR_AT },
+  facts: VisibilityFacts = PUBLIC_FACTS,
 ) {
   const post = {
     findMany: vi.fn().mockResolvedValue([]),
     findUnique: vi.fn().mockResolvedValue(cursorPost),
     count: vi.fn().mockResolvedValue(7),
   };
+  const visibility = {
+    contentAuthorWhere: vi.fn().mockReturnValue(VISIBLE_AUTHOR),
+    visibleProfileFacts: vi.fn().mockResolvedValue(facts),
+  };
   const service = new PostsReadService(
     { post } as unknown as PrismaService,
     { urlFor: (key: string) => key } as unknown as MediaUrlService,
+    visibility as unknown as VisibilityService,
   );
-  return { service, post };
+  return { service, post, visibility };
 }
 
 describe('PostsReadService', () => {
@@ -38,7 +55,7 @@ describe('PostsReadService', () => {
     await service.feed(ME, { limit: 20 });
 
     expect(post.findMany).toHaveBeenCalledWith({
-      where: feedWhere(ME, undefined),
+      where: feedWhere(ME, VISIBLE_AUTHOR),
       orderBy: POST_ORDER,
       take: 21,
       select: POST_VIEW_SELECT,
@@ -53,7 +70,7 @@ describe('PostsReadService', () => {
     await service.feed(ME, { limit: 20, careerId });
 
     expect(post.findMany.mock.calls[0][0].where).toEqual(
-      feedWhere(ME, careerId),
+      feedWhere(ME, VISIBLE_AUTHOR, careerId),
     );
   });
 
@@ -67,7 +84,7 @@ describe('PostsReadService', () => {
       select: { createdAt: true },
     });
     expect(post.findMany.mock.calls[0][0].where).toEqual({
-      AND: [feedWhere(ME, undefined), afterCursor(CURSOR_AT, CURSOR)],
+      AND: [feedWhere(ME, VISIBLE_AUTHOR), afterCursor(CURSOR_AT, CURSOR)],
     });
   });
 
@@ -88,12 +105,41 @@ describe('PostsReadService', () => {
   it('AC-3: byAuthor pide solo las publicaciones visibles del autor', async () => {
     const { service, post } = setup();
 
-    await service.byAuthor(ME, { limit: 5 });
+    await service.byAuthor(ME, OTHER, { limit: 5 });
 
     expect(post.findMany.mock.calls[0][0]).toMatchObject({
-      where: authorWhere(ME),
+      where: authorWhere(OTHER),
       take: 6,
     });
+  });
+
+  it('decisión 15: byAuthor de un perfil limitado da PROFILE_RESTRICTED sin pedir la lista', async () => {
+    const { service, post } = setup(undefined, {
+      ...PUBLIC_FACTS,
+      visibility: 'FOLLOWERS',
+    });
+
+    const error = await service
+      .byAuthor(ME, OTHER, { limit: 5 })
+      .catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(ForbiddenException);
+    expect((error as ForbiddenException).getResponse()).toMatchObject({
+      code: 'PROFILE_RESTRICTED',
+    });
+    expect(post.findMany).not.toHaveBeenCalled();
+  });
+
+  it('decisión 15: el conteo de un perfil limitado sí se responde', async () => {
+    const { service, visibility } = setup(undefined, {
+      ...PUBLIC_FACTS,
+      visibility: 'PRIVATE',
+    });
+
+    expect(await service.countVisibleByAuthor(ME, OTHER)).toEqual({
+      count: 7,
+    });
+    expect(visibility.visibleProfileFacts).toHaveBeenCalledWith(ME, OTHER);
   });
 
   it('AC-3: countByAuthor cuenta con la misma regla de visibles', async () => {

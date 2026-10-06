@@ -11,6 +11,10 @@ import type { Request, Response } from 'express';
 import { actorFromRequest } from '../actor/actor.decorator.js';
 import type { AuthenticatedUser } from '../actor/actor-context.js';
 import { AuditService } from '../audit/audit.service.js';
+import { ErrorReporter } from '../monitoring/error-reporter.js';
+import { shouldReport } from '../monitoring/should-report.js';
+
+type MonitoredRequest = Request & { user?: AuthenticatedUser };
 
 export interface ErrorBody {
   statusCode: number;
@@ -22,28 +26,40 @@ export interface ErrorBody {
 // Para dar un code propio: throw new ConflictException({ message, code: 'EMAIL_TAKEN' }).
 // Sin code propio, se usa el nombre del estado HTTP (NOT_FOUND, BAD_REQUEST...).
 // Cada 403 queda en la bitácora como access.denied antes de responder (spec 0003).
+// Los errores inesperados van a Sentry desde aquí y solo desde aquí (spec 0007).
 @Injectable()
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(HttpExceptionFilter.name);
 
-  constructor(private readonly audit: AuditService) {}
+  constructor(
+    private readonly audit: AuditService,
+    private readonly reporter: ErrorReporter,
+  ) {}
 
   async catch(exception: unknown, host: ArgumentsHost): Promise<void> {
     const http = host.switchToHttp();
     const res = http.getResponse<Response>();
+    const req = http.getRequest<MonitoredRequest>();
     const body = this.toBody(exception);
     if (body.statusCode === HttpStatus.FORBIDDEN) {
-      await this.auditDenied(
-        http.getRequest<Request & { user?: AuthenticatedUser }>(),
-        body,
-      );
+      await this.auditDenied(req, body);
+    }
+    if (shouldReport(exception, body)) {
+      this.reporter.report(exception, {
+        userId: req.user?.id,
+        method: req.method,
+        // La plantilla de la ruta, nunca la URL cruda (puede traer datos).
+        route:
+          (req.route as { path?: string } | undefined)?.path ?? 'desconocida',
+        code: body.code,
+      });
     }
     res.status(body.statusCode).json(body);
   }
 
   private async auditDenied(
-    req: Request & { user?: AuthenticatedUser },
+    req: MonitoredRequest,
     body: ErrorBody,
   ): Promise<void> {
     await this.audit.recordStandalone({
