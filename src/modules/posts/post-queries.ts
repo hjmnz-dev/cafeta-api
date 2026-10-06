@@ -83,6 +83,10 @@ export const POST_VIEW_SELECT = {
   codeSnippet: true,
   groupName: true,
   groupSpots: true,
+  media: {
+    select: { storageKey: true, mediaType: true, mimeType: true },
+    orderBy: { position: 'asc' },
+  },
   author: {
     select: {
       id: true,

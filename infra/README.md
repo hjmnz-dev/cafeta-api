@@ -128,6 +128,33 @@ Al final lista lo que quedó en cada ambiente:
 
 **Plan B** si un `deploy` falla en `azure/webapps-deploy` por autenticación: cambia ese paso por `az webapp deploy --resource-group rg-cafeta --name ${{ vars.AZURE_WEBAPP_NAME }} --src-path <api.zip o app.zip> --type zip`, con el mismo `azure/login` antes.
 
+## 5. Archivos en Blob Storage
+
+Las fotos, videos y PDF (funcionalidad 13) viven en la cuenta `stcafetahj01` (Standard LRS, Canada Central, en `rg-cafeta`) dentro del contenedor privado `media`: nadie los lee sin un enlace SAS de la API. En Cloud Shell, modo Bash, una sola vez:
+
+```bash
+RG=rg-cafeta ST=stcafetahj01 API=cafeta-api-hj01
+az provider register --namespace Microsoft.Storage --wait
+az storage account create -g $RG -n $ST -l canadacentral \
+  --sku Standard_LRS --kind StorageV2 --access-tier Hot \
+  --https-only true --min-tls-version TLS1_2 \
+  --allow-blob-public-access false -o none
+CONN=$(az storage account show-connection-string -g $RG -n $ST -o tsv)
+az storage container create --name media --public-access off --connection-string "$CONN" -o none
+az webapp config appsettings set -g $RG -n $API \
+  --settings AZURE_STORAGE_CONNECTION_STRING="$CONN" -o none
+unset CONN
+az storage account show -g $RG -n $ST --query allowBlobPublicAccess   # false: privado
+```
+
+La cadena de conexión lleva la clave de la cuenta: no se imprime ni queda en el historial (va en `CONN` y se borra). Guardar la app setting reinicia la API. Si `stcafetahj01` ya está tomado en Azure, usa otro nombre y anótalo aquí.
+
+| Si ves                                | Haz esto                                                                         |
+| ------------------------------------- | -------------------------------------------------------------------------------- |
+| `StorageAccountAlreadyTaken`          | El nombre es global. Cambia `ST` (3 a 24 minúsculas o números) y corre de nuevo. |
+| `RequestDisallowedByAzure`            | La región no está permitida. Revisa [Regiones permitidas](#regiones-permitidas). |
+| La API responde `STORAGE_UNAVAILABLE` | Falta `AZURE_STORAGE_CONNECTION_STRING` en la Web App o la cuenta no existe.     |
+
 ## Cómo funciona el día a día
 
 - Un push a `main` corre CI y, solo si todo pasa, `deploy`. Los PR y las otras ramas nunca despliegan.

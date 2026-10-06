@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import type { PrismaService } from '../../prisma/prisma.service.js';
+import type { MediaUrlService } from '../uploads/media-url.service.js';
 import type { VisibilityFacts } from '../visibility/visibility-rules.js';
 import type { VisibilityService } from '../visibility/visibility.service.js';
 import {
@@ -41,6 +42,7 @@ function setup(
   };
   const service = new PostsReadService(
     { post } as unknown as PrismaService,
+    { urlFor: (key: string) => key } as unknown as MediaUrlService,
     visibility as unknown as VisibilityService,
   );
   return { service, post, visibility };

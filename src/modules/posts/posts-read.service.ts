@@ -17,6 +17,7 @@ import {
   POST_ORDER,
   POST_VIEW_SELECT,
 } from './post-queries.js';
+import { MediaUrlService } from '../uploads/media-url.service.js';
 import { toPostPage } from './post-view.mapper.js';
 
 // Lecturas de publicaciones (spec 0005). La privacidad y los bloqueos los
@@ -25,6 +26,7 @@ import { toPostPage } from './post-view.mapper.js';
 export class PostsReadService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly urls: MediaUrlService,
     private readonly visibility: VisibilityService,
   ) {}
 
@@ -76,7 +78,7 @@ export class PostsReadService {
       take: limit + 1,
       select: POST_VIEW_SELECT,
     });
-    return toPostPage(rows, limit);
+    return toPostPage(rows, limit, (key) => this.urls.urlFor(key));
   }
 
   // No se usa el cursor nativo de Prisma: si la publicación ya no existe

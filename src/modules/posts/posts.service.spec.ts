@@ -5,6 +5,8 @@ import type {
 } from '../../common/actor/actor-context.js';
 import type { AuditService } from '../../common/audit/audit.service.js';
 import type { PrismaService } from '../../prisma/prisma.service.js';
+import type { MediaStorage, StoredObject } from '../uploads/media-storage.js';
+import type { MediaUrlService } from '../uploads/media-url.service.js';
 import type { PostViewRow } from './post-queries.js';
 import { PostsService } from './posts.service.js';
 
@@ -36,6 +38,7 @@ const created: PostViewRow = {
   codeSnippet: null,
   groupName: null,
   groupSpots: null,
+  media: [],
   author: {
     id: user.id,
     verificationStatus: 'PENDING',
@@ -48,7 +51,10 @@ const created: PostViewRow = {
   _count: { reactions: 0, comments: 0 },
 };
 
-function setup(record = vi.fn().mockResolvedValue(undefined)) {
+function setup(
+  record = vi.fn().mockResolvedValue(undefined),
+  stored: Record<string, StoredObject> = {},
+) {
   const tx = { post: { create: vi.fn().mockResolvedValue(created) } };
   const $transaction = vi.fn(async (fn: (client: typeof tx) => unknown) =>
     fn(tx),
@@ -56,6 +62,10 @@ function setup(record = vi.fn().mockResolvedValue(undefined)) {
   const service = new PostsService(
     { $transaction } as unknown as PrismaService,
     { record } as unknown as AuditService,
+    {
+      describe: vi.fn(async (key: string) => stored[key] ?? null),
+    } as unknown as MediaStorage,
+    { urlFor: (key: string) => `url:${key}` } as unknown as MediaUrlService,
   );
   return { service, tx, $transaction, record };
 }
@@ -77,6 +87,7 @@ describe('PostsService.create', () => {
           type: 'TEXT',
           content: 'Hola INTEC',
           location: 'Biblioteca',
+          media: { create: [] },
         },
       }),
     );
@@ -129,5 +140,74 @@ describe('PostsService.create', () => {
     await expect(
       service.create({ content: 'Hola' }, user, actor),
     ).rejects.toThrow('bitácora caída');
+  });
+});
+
+describe('PostsService.create con adjuntos (spec 0008, decisión 13)', () => {
+  const IMG = (n: number) =>
+    `image/0192f0c4-7d1a-4c3e-9a51-3c2b8e1f4a1${n}.jpg`;
+  const VIDEO = 'video/0192f0c4-7d1a-4c3e-9a51-3c2b8e1f4a20.mp4';
+  const mine = (contentType: string): StoredObject => ({
+    contentType,
+    sizeBytes: 1234,
+    ownerId: user.id,
+  });
+
+  it('guarda cada clave en su orden con el tipo que dice Blob', async () => {
+    const { service, tx } = setup(undefined, {
+      [IMG(1)]: mine('image/jpeg'),
+      [IMG(2)]: mine('image/png'),
+    });
+
+    await service.create(
+      { content: 'Fotos', mediaKeys: [IMG(1), IMG(2)] },
+      user,
+      actor,
+    );
+
+    expect(tx.post.create.mock.calls[0][0].data.media).toEqual({
+      create: [
+        {
+          storageKey: IMG(1),
+          mediaType: 'IMAGE',
+          mimeType: 'image/jpeg',
+          sizeBytes: 1234,
+          position: 0,
+        },
+        {
+          storageKey: IMG(2),
+          mediaType: 'IMAGE',
+          mimeType: 'image/png',
+          sizeBytes: 1234,
+          position: 1,
+        },
+      ],
+    });
+  });
+
+  it('rechaza una clave que no existe o que subió otra persona', async () => {
+    const { service, tx } = setup(undefined, {
+      [IMG(1)]: { ...mine('image/jpeg'), ownerId: 'otra-persona' },
+    });
+
+    for (const key of [IMG(1), IMG(2)]) {
+      await expect(
+        service.create({ content: 'x', mediaKeys: [key] }, user, actor),
+      ).rejects.toMatchObject({ response: { code: 'MEDIA_NOT_FOUND' } });
+    }
+    expect(tx.post.create).not.toHaveBeenCalled();
+  });
+
+  it('rechaza mezclar un video con imágenes', async () => {
+    const { service } = setup(undefined, {
+      [IMG(1)]: mine('image/jpeg'),
+      [VIDEO]: mine('video/mp4'),
+    });
+
+    await expect(
+      service.create({ content: 'x', mediaKeys: [IMG(1), VIDEO] }, user, actor),
+    ).rejects.toMatchObject({
+      response: { code: 'MEDIA_COMBINATION_INVALID' },
+    });
   });
 });

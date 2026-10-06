@@ -80,6 +80,17 @@ export class EnvironmentVariables {
   @Min(1)
   POST_RATE_LIMIT: number = 10;
 
+  // Blob Storage de los archivos (spec 0008, decisión 13). Opcional: sin ella
+  // la API arranca y la subida responde STORAGE_UNAVAILABLE.
+  @IsOptional()
+  @IsString()
+  AZURE_STORAGE_CONNECTION_STRING?: string;
+
+  @Matches(/^[a-z0-9-]{3,63}$/, {
+    message: 'AZURE_STORAGE_CONTAINER debe ser un nombre de contenedor válido',
+  })
+  AZURE_STORAGE_CONTAINER: string = 'media';
+
   // DSN del proyecto cafeta-api en Sentry (spec 0007). Opcional: sin él no se
   // envía nada. Vacío cuenta como ausente. instrument.ts la lee de process.env
   // porque corre antes que ConfigModule; aquí solo sirve para el aviso de arranque.
