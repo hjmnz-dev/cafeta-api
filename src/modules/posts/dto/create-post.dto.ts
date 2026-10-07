@@ -22,7 +22,7 @@ export function codePoints(text: string): number {
   return [...text].length;
 }
 
-const MaxCodePoints = (max: number) =>
+export const MaxCodePoints = (max: number) =>
   ValidateBy({
     name: 'maxCodePoints',
     constraints: [max],
@@ -35,10 +35,11 @@ const MaxCodePoints = (max: number) =>
   });
 
 export class CreatePostDto {
-  /** Texto de la publicación, de 1 a 2000 caracteres sin contar los espacios de los bordes. */
+  /** Texto de hasta 2000 caracteres. Puede faltar solo si hay adjuntos (HU20 E2). */
+  @IsOptional()
   @IsString()
   @MaxCodePoints(POST_CONTENT_MAX)
-  content: string;
+  content?: string;
 
   @ApiProperty({ enum: CAMPUS_LOCATIONS, required: false })
   @IsOptional()

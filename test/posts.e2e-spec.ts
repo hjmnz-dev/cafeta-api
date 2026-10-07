@@ -152,11 +152,13 @@ describe('Publicaciones (e2e)', () => {
 
   it('AC-2: rechaza vacío, sin content, largo, ubicación inventada y campos extra sin guardar nada', async () => {
     const ana = await signUp('ana');
-    const empty = await publish(ana, { content: '   ' }).expect(400);
-    expect(empty.body.code).toBe('POST_CONTENT_REQUIRED');
+    // Sin texto ni adjuntos (HU20 E2, spec 0008 decisión 17).
+    for (const body of [{ content: '   ' }, {}]) {
+      const empty = await publish(ana, body).expect(400);
+      expect(empty.body.code).toBe('POST_CONTENT_REQUIRED');
+    }
 
     const cases: Record<string, unknown>[] = [
-      {},
       { content: 'a'.repeat(2001) },
       { content: 'Hola', location: 'Marte' },
       { content: 'Hola', type: 'EVENT' },
