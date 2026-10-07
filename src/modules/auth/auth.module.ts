@@ -33,6 +33,6 @@ import { SessionsService } from './sessions.service.js';
     // Guard global: toda ruta exige sesión salvo las @Public().
     { provide: APP_GUARD, useClass: JwtAuthGuard },
   ],
-  exports: [AccessTokenService],
+  exports: [AccessTokenService, SessionsService],
 })
 export class AuthModule {}

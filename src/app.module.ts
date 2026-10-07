@@ -6,6 +6,7 @@ import { PrismaModule } from './prisma/prisma.module.js';
 import { HealthModule } from './health/health.module.js';
 import { AuditModule } from './common/audit/audit.module.js';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter.js';
+import { AccountModule } from './modules/account/account.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { CareersModule } from './modules/careers/careers.module.js';
 import { PostsModule } from './modules/posts/posts.module.js';
@@ -44,6 +45,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     BlocksModule,
     SearchModule,
     NotificationsModule,
+    AccountModule,
   ],
   providers: [{ provide: APP_FILTER, useClass: HttpExceptionFilter }],
 })
