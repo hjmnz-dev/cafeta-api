@@ -5,6 +5,7 @@ import {
   canSeeContent,
   canSeeProfile,
   contentVisibleTo,
+  profileVisibleTo,
   type VisibilityFacts,
 } from './visibility-rules.js';
 
@@ -73,5 +74,10 @@ export class VisibilityService {
   // Filtro para las listas: autores cuyo contenido ve quien mira.
   contentAuthorWhere(viewerId: string): Prisma.UserWhereInput {
     return contentVisibleTo(viewerId);
+  }
+
+  // Filtro para las listas de personas: perfiles que quien mira puede ver.
+  profileWhere(viewerId: string): Prisma.UserWhereInput {
+    return profileVisibleTo(viewerId);
   }
 }

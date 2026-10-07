@@ -16,6 +16,7 @@ import { ProfilesModule } from './modules/profiles/profiles.module.js';
 import { MonitoringModule } from './common/monitoring/monitoring.module.js';
 import { MonitoringTestModule } from './modules/monitoring/monitoring.module.js';
 import { FollowsModule } from './modules/follows/follows.module.js';
+import { SearchModule } from './modules/search/search.module.js';
 import { NotificationsModule } from './modules/notifications/notifications.module.js';
 
 @Module({
@@ -39,6 +40,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     ConversationsModule,
     UploadsModule,
     FollowsModule,
+    SearchModule,
     NotificationsModule,
   ],
   providers: [{ provide: APP_FILTER, useClass: HttpExceptionFilter }],
