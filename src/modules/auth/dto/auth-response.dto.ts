@@ -17,6 +17,8 @@ export class CurrentUserDto {
   role: 'STUDENT' | 'ADMIN';
   @ApiProperty({ enum: ['PENDING', 'VERIFIED', 'REJECTED'] })
   verificationStatus: 'PENDING' | 'VERIFIED' | 'REJECTED';
+  /** Fecha de registro. @example 2026-10-02T14:00:00.000Z */
+  createdAt: string;
   profile: ProfileSummaryDto;
 }
 

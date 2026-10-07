@@ -1,0 +1,51 @@
+import { Injectable } from '@nestjs/common';
+import type { ActorContext } from '../../common/actor/actor-context.js';
+import { AuditService } from '../../common/audit/audit.service.js';
+import { stateChangeError } from '../../common/soft-delete/soft-delete.js';
+import { PrismaService } from '../../prisma/prisma.service.js';
+import { SessionsService } from '../auth/sessions.service.js';
+import { UserAccountService } from '../users/user-account.service.js';
+
+export interface DeactivationOrigin {
+  /** Quién decidió la baja: la propia persona o un administrador. */
+  by: 'self' | 'admin';
+  reason?: string;
+}
+
+// El único lugar que desactiva una cuenta (spec 0009, decisión 11): baja
+// lógica, sesiones cerradas y auditoría, todo en la misma transacción. La baja
+// voluntaria (11) y las de admin (32 y 33) pasan por aquí.
+@Injectable()
+export class AccountStateService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly users: UserAccountService,
+    private readonly sessions: SessionsService,
+    private readonly audit: AuditService,
+  ) {}
+
+  async deactivate(
+    userId: string,
+    actor: ActorContext,
+    origin: DeactivationOrigin,
+  ): Promise<void> {
+    const now = new Date();
+    await this.prisma.$transaction(async (tx) => {
+      if (!(await this.users.deactivate(tx, userId, now))) {
+        throw stateChangeError(true, 'deactivate');
+      }
+      await this.sessions.revokeAllForUser(tx, userId, now);
+      await this.audit.record(tx, {
+        action: 'account.deactivate',
+        entityType: 'user',
+        entityId: userId,
+        actor,
+        succeeded: true,
+        metadata: {
+          by: origin.by,
+          ...(origin.reason ? { reason: origin.reason } : {}),
+        },
+      });
+    });
+  }
+}
