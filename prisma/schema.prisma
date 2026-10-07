@@ -143,6 +143,24 @@ model Session {
   @@map("sessions")
 }
 
+// Enlace para restablecer la contraseña (spec 0008, decisión 10). Solo se guarda el
+// hash SHA 256 del token; el token en claro viaja únicamente en el correo. Un solo
+// uso (usedAt) y 30 minutos de vigencia (expiresAt). No hay baja lógica: una fila
+// usada o vencida simplemente deja de servir.
+model PasswordResetToken {
+  id        String    @id @default(uuid(7)) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash") @db.Char(64)
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(3)
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
 model User {
   id                 String             @id @default(uuid(7)) @db.Uuid
   email              String             @unique @db.VarChar(254)
@@ -162,6 +180,7 @@ model User {
   followers              Follow[]                @relation("FollowFollowing")
   blocksMade             Block[]                 @relation("BlockBlocker")
   blocksReceived         Block[]                 @relation("BlockBlocked")
+  passwordResetTokens    PasswordResetToken[]
   posts                  Post[]
   postReactions          PostReaction[]
   postComments           PostComment[]

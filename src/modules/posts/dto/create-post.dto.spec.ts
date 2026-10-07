@@ -13,9 +13,8 @@ async function messages(body: Record<string, unknown>): Promise<string[]> {
 }
 
 describe('CreatePostDto', () => {
-  it('sin content solo dice que debe ser texto, no que es demasiado largo', async () => {
-    const found = await messages({});
-    expect(found).toEqual(['content must be a string']);
+  it('sin content el DTO pasa: el service exige texto o adjuntos (HU20 E2)', async () => {
+    expect(await messages({})).toEqual([]);
   });
 
   it('un content que no es texto tampoco se reporta como demasiado largo', async () => {

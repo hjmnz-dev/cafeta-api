@@ -17,6 +17,7 @@ import { MonitoringModule } from './common/monitoring/monitoring.module.js';
 import { MonitoringTestModule } from './modules/monitoring/monitoring.module.js';
 import { FollowsModule } from './modules/follows/follows.module.js';
 import { SearchModule } from './modules/search/search.module.js';
+import { NotificationsModule } from './modules/notifications/notifications.module.js';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { SearchModule } from './modules/search/search.module.js';
     UploadsModule,
     FollowsModule,
     SearchModule,
+    NotificationsModule,
   ],
   providers: [{ provide: APP_FILTER, useClass: HttpExceptionFilter }],
 })

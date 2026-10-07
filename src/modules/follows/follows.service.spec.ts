@@ -7,6 +7,7 @@ import {
 import type { ActorContext } from '../../common/actor/actor-context.js';
 import type { AuditService } from '../../common/audit/audit.service.js';
 import type { PrismaService } from '../../prisma/prisma.service.js';
+import type { NotificationsService } from '../notifications/notifications.service.js';
 import type { MediaUrlService } from '../uploads/media-url.service.js';
 import type { VisibilityService } from '../visibility/visibility.service.js';
 import { FollowsService } from './follows.service.js';
@@ -17,6 +18,7 @@ describe('FollowsService', () => {
   let audit: any;
   let visibility: any;
   let urls: any;
+  let notifications: any;
 
   const actor: ActorContext = {
     userId: 'u1',
@@ -47,12 +49,14 @@ describe('FollowsService', () => {
       visibleProfileFacts: vi.fn(),
     };
     urls = { urlFor: vi.fn((k) => `https://cdn.example.com/${k}`) };
+    notifications = { notify: vi.fn().mockResolvedValue(undefined) };
 
     service = new FollowsService(
       prisma as unknown as PrismaService,
       audit as unknown as AuditService,
       visibility as unknown as VisibilityService,
       urls as unknown as MediaUrlService,
+      notifications as unknown as NotificationsService,
     );
   });
 
@@ -120,6 +124,11 @@ describe('FollowsService', () => {
         expect.anything(),
         expect.objectContaining({ action: 'follow.create' }),
       );
+      expect(notifications.notify).toHaveBeenCalledWith({
+        type: 'FOLLOW',
+        recipientId: 'u2',
+        actorId: 'u1',
+      });
     });
 
     it('con perfil FOLLOWERS crea follow PENDING y audita', async () => {
@@ -142,6 +151,11 @@ describe('FollowsService', () => {
           }),
         }),
       );
+      expect(notifications.notify).toHaveBeenCalledWith({
+        type: 'FOLLOW_REQUEST',
+        recipientId: 'u2',
+        actorId: 'u1',
+      });
     });
 
     it('si existía una fila desactivada, la reactiva', async () => {
@@ -225,6 +239,11 @@ describe('FollowsService', () => {
         expect.anything(),
         expect.objectContaining({ action: 'follow.accept' }),
       );
+      expect(notifications.notify).toHaveBeenCalledWith({
+        type: 'FOLLOW_ACCEPTED',
+        recipientId: 'u2',
+        actorId: 'u1',
+      });
     });
   });
 
