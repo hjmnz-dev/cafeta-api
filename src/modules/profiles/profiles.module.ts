@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AuditModule } from '../../common/audit/audit.module.js';
 import { FollowsModule } from '../follows/follows.module.js';
+import { NotificationsModule } from '../notifications/notifications.module.js';
 import { PostsModule } from '../posts/posts.module.js';
 import { UsersModule } from '../users/users.module.js';
 import { VisibilityModule } from '../visibility/visibility.module.js';
@@ -15,6 +16,7 @@ import { ProfilesService } from './profiles.service.js';
     AuditModule,
     UsersModule,
     FollowsModule,
+    NotificationsModule,
     PostsModule,
     VisibilityModule,
   ],
