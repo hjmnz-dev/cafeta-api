@@ -9,6 +9,7 @@ import type { ActorContext } from '../../common/actor/actor-context.js';
 import { AuditService } from '../../common/audit/audit.service.js';
 import { ACTIVE } from '../../common/soft-delete/soft-delete.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 import { MediaUrlService } from '../uploads/media-url.service.js';
 import { canSeeContent } from '../visibility/visibility-rules.js';
 import { VisibilityService } from '../visibility/visibility.service.js';
@@ -45,6 +46,7 @@ export class FollowsService {
     private readonly audit: AuditService,
     private readonly visibility: VisibilityService,
     private readonly urls: MediaUrlService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   // Seguidores y seguidos con seguimiento aceptado, activo y de cuentas activas.
@@ -172,7 +174,12 @@ export class FollowsService {
       return record;
     });
 
-    // TODO(27): Si nextStatus === 'ACCEPTED' notificar FOLLOW_ACCEPTED, si 'PENDING' notificar FOLLOW_REQUEST
+    // Perfil público: seguidor nuevo; restringido: solicitud por aprobar.
+    await this.notifications.notify({
+      type: nextStatus === 'ACCEPTED' ? 'FOLLOW' : 'FOLLOW_REQUEST',
+      recipientId: targetUserId,
+      actorId: currentUserId,
+    });
 
     return { id: followRecord.id, status: nextStatus };
   }
@@ -260,7 +267,11 @@ export class FollowsService {
       });
     });
 
-    // TODO(27): Notificar FOLLOW_ACCEPTED al seguidor
+    await this.notifications.notify({
+      type: 'FOLLOW_ACCEPTED',
+      recipientId: follow.followerId,
+      actorId: currentUserId,
+    });
   }
 
   // Rechazar una solicitud de seguimiento dirigida a mí (baja lógica).

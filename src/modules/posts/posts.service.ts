@@ -22,6 +22,13 @@ interface MediaInput {
   position: number;
 }
 
+// Sin texto ni adjuntos no hay publicación (HU20 E2); también al editar.
+export const postContentRequired = () =>
+  new BadRequestException({
+    message: 'La publicación no puede estar vacía',
+    code: 'POST_CONTENT_REQUIRED',
+  });
+
 const mediaNotFound = () =>
   new BadRequestException({
     message: 'Uno de los archivos no existe o no lo subiste tú',
@@ -45,20 +52,18 @@ export class PostsService {
     user: AuthenticatedUser,
     actor: ActorContext,
   ): Promise<PostViewDto> {
-    const content = dto.content.trim();
-    if (content.length === 0) {
-      throw new BadRequestException({
-        message: 'La publicación no puede estar vacía',
-        code: 'POST_CONTENT_REQUIRED',
-      });
+    const content = dto.content?.trim() ?? '';
+    const mediaKeys = dto.mediaKeys ?? [];
+    if (content.length === 0 && mediaKeys.length === 0) {
+      throw postContentRequired();
     }
-    const media = await this.resolveMedia(dto.mediaKeys ?? [], user.id);
+    const media = await this.resolveMedia(mediaKeys, user.id);
     const row = await this.prisma.$transaction(async (tx) => {
       const post = await tx.post.create({
         data: {
           authorId: user.id,
           type: 'TEXT',
-          content,
+          content: content || null,
           location: dto.location ?? null,
           media: { create: media },
         },

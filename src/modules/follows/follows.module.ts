@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AuditModule } from '../../common/audit/audit.module.js';
+import { NotificationsModule } from '../notifications/notifications.module.js';
 import { UploadsModule } from '../uploads/uploads.module.js';
 import { VisibilityModule } from '../visibility/visibility.module.js';
 import { FollowsController } from './follows.controller.js';
@@ -8,7 +9,7 @@ import { UserFollowsController } from './user-follows.controller.js';
 
 // Seguimientos (decisión 16).
 @Module({
-  imports: [VisibilityModule, UploadsModule, AuditModule],
+  imports: [VisibilityModule, UploadsModule, AuditModule, NotificationsModule],
   controllers: [FollowsController, UserFollowsController],
   providers: [FollowsService],
   exports: [FollowsService],

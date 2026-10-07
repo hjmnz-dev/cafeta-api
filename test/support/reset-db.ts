@@ -24,6 +24,7 @@ const APP_TABLES = [
   'reports',
   'audit_logs',
   'sessions',
+  'password_reset_tokens',
 ];
 
 // TRUNCATE no dispara los triggers de fila, así que ni la bitácora inmutable ni

@@ -89,6 +89,11 @@ describe('Conversaciones (e2e)', () => {
         .post(`/api/v1${path}`)
         .set('Authorization', `Bearer ${account.token}`)
         .send(body),
+    patch: (path: string, body: Record<string, unknown> = {}) =>
+      request(server)
+        .patch(`/api/v1${path}`)
+        .set('Authorization', `Bearer ${account.token}`)
+        .send(body),
   });
 
   const open = async (from: Account, to: Account): Promise<string> =>
@@ -110,17 +115,20 @@ describe('Conversaciones (e2e)', () => {
       socket.on('connect_error', reject);
     });
 
-  const nextMessage = (socket: Socket): Promise<MessageEvent> =>
+  const nextEvent = <T>(socket: Socket, event: string): Promise<T> =>
     new Promise((resolve, reject) => {
       const timer = setTimeout(
-        () => reject(new Error('no llegó message:new')),
+        () => reject(new Error(`no llegó ${event}`)),
         3000,
       );
-      socket.once('message:new', (payload: MessageEvent) => {
+      socket.once(event, (payload: T) => {
         clearTimeout(timer);
         resolve(payload);
       });
     });
+
+  const nextMessage = (socket: Socket): Promise<MessageEvent> =>
+    nextEvent<MessageEvent>(socket, 'message:new');
 
   it('AC-1 (HU34 E1, HU35 E1): un mensaje enviado llega al otro por el socket sin recargar', async () => {
     const ana = await signUp('ana');
@@ -363,6 +371,147 @@ describe('Conversaciones (e2e)', () => {
     expect(seen.at(-1)).toBe('m0');
   });
 
+  // Funcionalidad 26: editar y desactivar mensajes (HU36, HU37).
+  const messagePath = (conversationId: string, messageId: string) =>
+    `/conversations/${conversationId}/messages/${messageId}`;
+
+  it('26 AC-1 (HU36 E1): el autor edita su mensaje, queda marcado como editado y el otro lo ve sin recargar', async () => {
+    const ana = await signUp('ana');
+    const beto = await signUp('beto');
+    const conversationId = await open(ana, beto);
+    const sent = (await send(ana, conversationId, 'Hola Bteo').expect(201))
+      .body;
+    const betoSocket = await connect(beto.token);
+    const updated = nextEvent<MessageEvent>(betoSocket, 'message:updated');
+
+    const res = await as(ana)
+      .patch(messagePath(conversationId, sent.id), { content: ' Hola Beto ' })
+      .expect(200);
+
+    expect(res.body).toMatchObject({
+      id: sent.id,
+      content: 'Hola Beto',
+      createdAt: sent.createdAt,
+    });
+    expect(res.body.editedAt).not.toBeNull();
+    expect(await updated).toEqual(res.body);
+    const history = await as(beto)
+      .get(`/conversations/${conversationId}/messages`)
+      .expect(200);
+    expect(history.body.items[0]).toEqual(res.body);
+    const log = await prisma.auditLog.findMany({
+      where: { action: 'message.update', entityId: sent.id },
+    });
+    expect(log).toHaveLength(1);
+    expect(log[0]).toMatchObject({ actorId: ana.id, succeeded: true });
+  });
+
+  it('26 AC-2 (HU36 E2, HU37 E2): nadie más que el autor edita o desactiva un mensaje', async () => {
+    const ana = await signUp('ana');
+    const beto = await signUp('beto');
+    const carla = await signUp('carla');
+    const conversationId = await open(ana, beto);
+    const sent = (await send(ana, conversationId, 'Original').expect(201)).body;
+    const path = messagePath(conversationId, sent.id);
+
+    const edit = await as(beto)
+      .patch(path, { content: 'Cambiado' })
+      .expect(403);
+    expect(edit.body.code).toBe('NOT_MESSAGE_AUTHOR');
+    const off = await as(beto).post(`${path}/deactivate`).expect(403);
+    expect(off.body.code).toBe('NOT_MESSAGE_AUTHOR');
+    // Quien no participa no sabe ni que la conversación existe.
+    await as(carla).patch(path, { content: 'Cambiado' }).expect(404);
+    await as(carla).post(`${path}/deactivate`).expect(404);
+
+    const row = await prisma.message.findUniqueOrThrow({
+      where: { id: sent.id },
+    });
+    expect(row).toMatchObject({
+      content: 'Original',
+      editedAt: null,
+      deactivatedAt: null,
+    });
+  });
+
+  it('26 AC-3 (HU36): la edición vacía, larga o con campos extra se rechaza', async () => {
+    const ana = await signUp('ana');
+    const beto = await signUp('beto');
+    const conversationId = await open(ana, beto);
+    const sent = (await send(ana, conversationId, 'Original').expect(201)).body;
+    const path = messagePath(conversationId, sent.id);
+
+    const empty = await as(ana).patch(path, { content: '   ' }).expect(400);
+    expect(empty.body.code).toBe('MESSAGE_CONTENT_REQUIRED');
+    await as(ana)
+      .patch(path, { content: 'x'.repeat(2001) })
+      .expect(400);
+    await as(ana)
+      .patch(path, { content: 'Hola', senderId: beto.id })
+      .expect(400);
+    const missing = await as(ana)
+      .patch(messagePath(conversationId, MISSING_ID), { content: 'Hola' })
+      .expect(404);
+    expect(missing.body.code).toBe('MESSAGE_NOT_FOUND');
+  });
+
+  it('26 AC-4 (HU37 E1): el autor desactiva su mensaje, sale de la vista de los dos al momento y se conserva para auditoría', async () => {
+    const ana = await signUp('ana');
+    const beto = await signUp('beto');
+    const conversationId = await open(ana, beto);
+    await send(ana, conversationId, 'Primero').expect(201);
+    const sent = (await send(ana, conversationId, 'Me equivoqué').expect(201))
+      .body;
+    const betoSocket = await connect(beto.token);
+    const removed = nextEvent<{ id: string; conversationId: string }>(
+      betoSocket,
+      'message:deactivated',
+    );
+
+    await as(ana)
+      .post(`${messagePath(conversationId, sent.id)}/deactivate`)
+      .expect(204);
+
+    expect(await removed).toEqual({ id: sent.id, conversationId });
+    const history = await as(beto)
+      .get(`/conversations/${conversationId}/messages`)
+      .expect(200);
+    expect(history.body.items.map((m: MessageEvent) => m.content)).toEqual([
+      'Primero',
+    ]);
+    // La bandeja muestra el mensaje activo anterior.
+    const inbox = await as(beto).get('/conversations').expect(200);
+    expect(inbox.body.items[0].lastMessage.content).toBe('Primero');
+    const row = await prisma.message.findUniqueOrThrow({
+      where: { id: sent.id },
+    });
+    expect(row.content).toBe('Me equivoqué');
+    expect(row.deactivatedAt).not.toBeNull();
+    const log = await prisma.auditLog.findMany({
+      where: { action: 'message.deactivate', entityId: sent.id },
+    });
+    expect(log).toHaveLength(1);
+    expect(log[0]).toMatchObject({
+      actorId: ana.id,
+      succeeded: true,
+      metadata: { by: 'self' },
+    });
+  });
+
+  it('26 AC-4: un mensaje desactivado no se desactiva otra vez ni se edita', async () => {
+    const ana = await signUp('ana');
+    const beto = await signUp('beto');
+    const conversationId = await open(ana, beto);
+    const sent = (await send(ana, conversationId, 'Adiós').expect(201)).body;
+    const path = messagePath(conversationId, sent.id);
+    await as(ana).post(`${path}/deactivate`).expect(204);
+
+    const again = await as(ana).post(`${path}/deactivate`).expect(409);
+    expect(again.body.code).toBe('ALREADY_INACTIVE');
+    const edit = await as(ana).patch(path, { content: 'Hola' }).expect(404);
+    expect(edit.body.code).toBe('MESSAGE_NOT_FOUND');
+  });
+
   it('sin token todas las rutas de conversaciones responden 401', async () => {
     await request(server).get('/api/v1/conversations').expect(401);
     await request(server)
@@ -371,6 +520,15 @@ describe('Conversaciones (e2e)', () => {
       .expect(401);
     await request(server)
       .get(`/api/v1/conversations/${MISSING_ID}/messages`)
+      .expect(401);
+    await request(server)
+      .patch(`/api/v1/conversations/${MISSING_ID}/messages/${MISSING_ID}`)
+      .send({ content: 'Hola' })
+      .expect(401);
+    await request(server)
+      .post(
+        `/api/v1/conversations/${MISSING_ID}/messages/${MISSING_ID}/deactivate`,
+      )
       .expect(401);
   });
 });
