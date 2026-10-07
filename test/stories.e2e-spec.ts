@@ -124,7 +124,7 @@ describe('Crear y ver historias (e2e)', () => {
     expect(res.body.media.url).toContain('blob.test');
     const lifetime =
       Date.parse(res.body.expiresAt) - Date.parse(res.body.createdAt);
-    expect(Math.abs(lifetime - 24 * HOUR_MS)).toBeLessThan(5_000);
+    expect(lifetime).toBe(24 * HOUR_MS);
     const audit = await prisma.auditLog.findFirst({
       where: { action: 'story.create', entityId: res.body.id },
     });

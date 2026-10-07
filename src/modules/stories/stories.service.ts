@@ -58,6 +58,7 @@ export class StoriesService {
           mediaKey: dto.mediaKey,
           mediaType: format.mediaType,
           mediaMimeType: format.mimeType,
+          createdAt: now,
           expiresAt: new Date(now.getTime() + STORY_TTL_MS),
         },
         select: STORY_VIEW_SELECT,
