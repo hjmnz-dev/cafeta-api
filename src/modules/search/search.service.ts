@@ -7,7 +7,7 @@ import {
 import type { FollowUserPageDto } from '../follows/dto/follow-view.dto.js';
 import type { PageQueryDto } from '../posts/dto/page-query.dto.js';
 import type { PostPageDto } from '../posts/dto/post-page.dto.js';
-import { POST_VIEW_SELECT, VISIBLE_POST } from '../posts/post-queries.js';
+import { postViewSelect, VISIBLE_POST } from '../posts/post-queries.js';
 import { toPostView } from '../posts/post-view.mapper.js';
 import { MediaUrlService } from '../uploads/media-url.service.js';
 import { VisibilityService } from '../visibility/visibility.service.js';
@@ -100,7 +100,7 @@ export class SearchService {
     if (!window.ok) throw invalidCursor();
     const rows = await this.prisma.post.findMany({
       where: { id: { in: window.ids } },
-      select: POST_VIEW_SELECT,
+      select: postViewSelect(viewerId),
     });
     return {
       items: inOrderOf(window.ids, rows).map((row) =>

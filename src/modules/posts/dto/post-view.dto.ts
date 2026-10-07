@@ -1,5 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { MediaType, PostType } from '../../../generated/prisma/enums.js';
+import {
+  MediaType,
+  PostType,
+  ReactionType,
+} from '../../../generated/prisma/enums.js';
 
 export class PostAuthorDto {
   id: string;
@@ -53,4 +57,7 @@ export class PostViewDto {
   author: PostAuthorDto;
   reactionCount: number;
   commentCount: number;
+  /** Mi reacción activa a la publicación; null si no he reaccionado. */
+  @ApiProperty({ enum: ReactionType, enumName: 'ReactionType', nullable: true })
+  myReaction: ReactionType | null;
 }

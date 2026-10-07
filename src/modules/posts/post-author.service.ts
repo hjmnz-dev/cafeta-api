@@ -24,7 +24,7 @@ import { MediaStorage } from '../uploads/media-storage.js';
 import { MediaUrlService } from '../uploads/media-url.service.js';
 import type { PostViewDto } from './dto/post-view.dto.js';
 import type { UpdatePostDto } from './dto/update-post.dto.js';
-import { POST_VIEW_SELECT } from './post-queries.js';
+import { postViewSelect } from './post-queries.js';
 import { toPostView } from './post-view.mapper.js';
 import { postContentRequired } from './posts.service.js';
 
@@ -100,7 +100,7 @@ export class PostAuthorService {
           groupSpots: dto.groupSpots,
           editedAt: new Date(),
         },
-        select: POST_VIEW_SELECT,
+        select: postViewSelect(user.id),
       });
       await this.record(tx, 'post.update', id, actor);
       return updated;

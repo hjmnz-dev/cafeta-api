@@ -20,6 +20,7 @@ import { FollowsModule } from './modules/follows/follows.module.js';
 import { BlocksModule } from './modules/blocks/blocks.module.js';
 import { SearchModule } from './modules/search/search.module.js';
 import { NotificationsModule } from './modules/notifications/notifications.module.js';
+import { PostReactionsModule } from './modules/post-reactions/post-reactions.module.js';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     SearchModule,
     NotificationsModule,
     AccountModule,
+    PostReactionsModule,
   ],
   providers: [{ provide: APP_FILTER, useClass: HttpExceptionFilter }],
 })
