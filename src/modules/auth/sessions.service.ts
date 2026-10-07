@@ -59,6 +59,18 @@ export class SessionsService {
       : null;
   }
 
+  // Cierra todas las sesiones abiertas de una cuenta (al cambiar la contraseña).
+  async revokeAllForUser(
+    tx: SessionWriter,
+    userId: string,
+    now: Date,
+  ): Promise<void> {
+    await tx.session.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: now },
+    });
+  }
+
   async revoke(id: string, now: Date): Promise<void> {
     await this.prisma.session.updateMany({
       where: { id, revokedAt: null },
