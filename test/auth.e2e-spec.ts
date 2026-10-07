@@ -89,7 +89,7 @@ describe('Auth (e2e)', () => {
       include: { notificationPreference: true },
     });
     expect(user.passwordHash).toMatch(/^\$2[ab]\$12\$/);
-    expect(user.termsVersion).toBe('2026-09-borrador');
+    expect(user.termsVersion).toBe('2026-10');
     expect(user.termsAcceptedAt).toBeInstanceOf(Date);
     expect(user.notificationPreference).not.toBeNull();
 
