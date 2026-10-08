@@ -48,4 +48,26 @@ export class AccountStateService {
       });
     });
   }
+
+  // Reactivar es cosa del admin (32 y 33): la cuenta vuelve con su historial y
+  // sus sesiones siguen cerradas, así que entra con una nueva.
+  async reactivate(
+    userId: string,
+    actor: ActorContext,
+    reason: string,
+  ): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      if (!(await this.users.reactivate(tx, userId, new Date()))) {
+        throw stateChangeError(true, 'reactivate');
+      }
+      await this.audit.record(tx, {
+        action: 'account.reactivate',
+        entityType: 'user',
+        entityId: userId,
+        actor,
+        succeeded: true,
+        metadata: { by: 'admin', reason },
+      });
+    });
+  }
 }
