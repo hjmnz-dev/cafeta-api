@@ -21,6 +21,8 @@ import { BlocksModule } from './modules/blocks/blocks.module.js';
 import { SearchModule } from './modules/search/search.module.js';
 import { NotificationsModule } from './modules/notifications/notifications.module.js';
 import { StoriesModule } from './modules/stories/stories.module.js';
+import { PostCommentsModule } from './modules/post-comments/post-comments.module.js';
+import { PostReactionsModule } from './modules/post-reactions/post-reactions.module.js';
 
 @Module({
   imports: [
@@ -48,6 +50,8 @@ import { StoriesModule } from './modules/stories/stories.module.js';
     NotificationsModule,
     AccountModule,
     StoriesModule,
+    PostReactionsModule,
+    PostCommentsModule,
   ],
   providers: [{ provide: APP_FILTER, useClass: HttpExceptionFilter }],
 })

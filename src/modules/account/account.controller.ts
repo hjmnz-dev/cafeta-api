@@ -18,7 +18,7 @@ export class AccountController {
 
   // Pide la contraseña, así que lleva el mismo límite de intentos que el login.
   @UseGuards(ThrottlerGuard)
-  @SkipThrottle({ posts: true })
+  @SkipThrottle({ posts: true, comments: true })
   @Post('deactivate')
   @HttpCode(204)
   deactivate(

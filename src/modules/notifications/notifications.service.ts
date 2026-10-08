@@ -14,6 +14,9 @@ export interface NotifyInput {
   postId?: string;
   storyId?: string;
   conversationId?: string;
+  // Si ya existe un aviso con el mismo receptor, actor, tipo y publicación, no
+  // crea otro (spec 0009): quien reacciona y quita varias veces avisa una vez.
+  once?: boolean;
 }
 
 // El punto único que crea avisos (spec 0008, decisión 27). Cada service lo
@@ -34,6 +37,7 @@ export class NotificationsService {
   async notify(input: NotifyInput): Promise<void> {
     try {
       if (!(await this.allowed(input))) return;
+      if (input.once && (await this.alreadySent(input))) return;
       const row = await this.prisma.notification.create({
         data: {
           recipientId: input.recipientId,
@@ -55,6 +59,20 @@ export class NotificationsService {
         `No se pudo crear el aviso ${input.type}: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
+  }
+
+  private async alreadySent(input: NotifyInput): Promise<boolean> {
+    const found = await this.prisma.notification.findFirst({
+      where: {
+        recipientId: input.recipientId,
+        actorId: input.actorId,
+        type: input.type,
+        postId: input.postId ?? null,
+        storyId: input.storyId ?? null,
+      },
+      select: { id: true },
+    });
+    return found !== null;
   }
 
   // Ni a uno mismo, ni con un bloqueo entre los dos, ni si el receptor apagó
