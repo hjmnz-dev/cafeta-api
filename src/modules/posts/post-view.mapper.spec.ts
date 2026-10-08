@@ -30,6 +30,7 @@ const row = (overrides: Partial<PostViewRow> = {}): PostViewRow => ({
     },
   },
   reactions: [],
+  savedBy: [],
   _count: { reactions: 12, comments: 3 },
   ...overrides,
 });
@@ -65,6 +66,7 @@ describe('toPostView', () => {
       reactionCount: 12,
       commentCount: 3,
       myReaction: null,
+      savedByMe: false,
     });
   });
 
@@ -72,6 +74,13 @@ describe('toPostView', () => {
     const view = toPostView(row({ reactions: [{ type: 'FIRE' }] }), urlFor);
 
     expect(view.myReaction).toBe('FIRE');
+  });
+
+  it('savedByMe es true solo si tengo la publicación guardada (spec 0009, decisión 19)', () => {
+    expect(toPostView(row(), urlFor).savedByMe).toBe(false);
+    expect(
+      toPostView(row({ savedBy: [{ id: 'guardada' }] }), urlFor).savedByMe,
+    ).toBe(true);
   });
 
   it('las fechas opcionales vacías quedan en null', () => {

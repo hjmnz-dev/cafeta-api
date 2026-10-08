@@ -22,6 +22,7 @@ import { SearchModule } from './modules/search/search.module.js';
 import { NotificationsModule } from './modules/notifications/notifications.module.js';
 import { PostCommentsModule } from './modules/post-comments/post-comments.module.js';
 import { PostReactionsModule } from './modules/post-reactions/post-reactions.module.js';
+import { SavedPostsModule } from './modules/saved-posts/saved-posts.module.js';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { PostReactionsModule } from './modules/post-reactions/post-reactions.mod
     AccountModule,
     PostReactionsModule,
     PostCommentsModule,
+    SavedPostsModule,
   ],
   providers: [{ provide: APP_FILTER, useClass: HttpExceptionFilter }],
 })

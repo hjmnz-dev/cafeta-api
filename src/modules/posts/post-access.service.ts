@@ -1,9 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
-import { VISIBLE_POST } from '../posts/post-queries.js';
+import { VISIBLE_POST } from './post-queries.js';
 import { VisibilityService } from '../visibility/visibility.service.js';
 
-// Quién puede comentar en una publicación: solo quien la ve. Si no existe,
+// Quién puede interactuar con una publicación (comentar, guardar): solo quien
+// la ve. Si no existe,
 // está archivada o desactivada, o su autor no deja ver su contenido a quien
 // pregunta (decisión 15), responde 404 como si no existiera.
 @Injectable()

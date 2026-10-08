@@ -40,6 +40,7 @@ const created: PostViewRow = {
   groupSpots: null,
   media: [],
   reactions: [],
+  savedBy: [],
   author: {
     id: user.id,
     verificationStatus: 'PENDING',
