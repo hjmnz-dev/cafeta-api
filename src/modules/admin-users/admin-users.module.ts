@@ -19,5 +19,6 @@ import { AdminUsersReadService } from './admin-users-read.service.js';
     AdminUserVerificationService,
     AdminUsersReadService,
   ],
+  exports: [AdminTargetService],
 })
 export class AdminUsersModule {}
