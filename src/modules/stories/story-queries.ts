@@ -54,26 +54,39 @@ export function trayWhere(
   };
 }
 
-// Lo que dibuja el visor.
-export const STORY_VIEW_SELECT = {
-  id: true,
-  text: true,
-  mediaKey: true,
-  mediaType: true,
-  mediaMimeType: true,
-  createdAt: true,
-  expiresAt: true,
-  editedAt: true,
-  author: {
-    select: {
-      id: true,
-      profile: {
-        select: { handle: true, displayName: true, avatarKey: true },
+// Lo que dibuja el visor para quien mira (viewerId). Los conteos solo suman
+// filas activas de usuarios activos; myReaction es mi fila activa, si la hay.
+export const storyViewSelect = (viewerId: string) =>
+  ({
+    id: true,
+    text: true,
+    mediaKey: true,
+    mediaType: true,
+    mediaMimeType: true,
+    createdAt: true,
+    expiresAt: true,
+    editedAt: true,
+    author: {
+      select: {
+        id: true,
+        profile: {
+          select: { handle: true, displayName: true, avatarKey: true },
+        },
       },
     },
-  },
-} satisfies Prisma.StorySelect;
+    reactions: {
+      where: { userId: viewerId, deactivatedAt: null },
+      select: { type: true },
+      take: 1,
+    },
+    _count: {
+      select: {
+        reactions: { where: { deactivatedAt: null, user: ACTIVE } },
+        comments: { where: { deactivatedAt: null, author: ACTIVE } },
+      },
+    },
+  }) satisfies Prisma.StorySelect;
 
 export type StoryViewRow = Prisma.StoryGetPayload<{
-  select: typeof STORY_VIEW_SELECT;
+  select: ReturnType<typeof storyViewSelect>;
 }>;

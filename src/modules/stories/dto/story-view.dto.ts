@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { MediaType } from '../../../generated/prisma/enums.js';
+import { MediaType, ReactionType } from '../../../generated/prisma/enums.js';
 
 export class StoryMediaDto {
   /** Enlace de lectura que vence en una hora como máximo. */
@@ -21,6 +21,14 @@ export class StoryViewDto {
   expiresAt: string;
   @ApiProperty({ type: String, nullable: true })
   editedAt: string | null;
+  /** Mi reacción a la historia, o null si no he reaccionado. */
+  @ApiProperty({ enum: ReactionType, enumName: 'ReactionType', nullable: true })
+  myReaction: ReactionType | null;
+  /** Reacciones de usuarios activos; solo lo ve el autor, para los demás es null. */
+  @ApiProperty({ type: Number, nullable: true })
+  reactionCount: number | null;
+  /** Comentarios activos de usuarios activos. */
+  commentCount: number;
 }
 
 export class StoryAuthorDto {

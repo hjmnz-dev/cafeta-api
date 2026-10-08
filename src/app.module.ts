@@ -21,6 +21,8 @@ import { BlocksModule } from './modules/blocks/blocks.module.js';
 import { SearchModule } from './modules/search/search.module.js';
 import { NotificationsModule } from './modules/notifications/notifications.module.js';
 import { StoriesModule } from './modules/stories/stories.module.js';
+import { StoryCommentsModule } from './modules/story-comments/story-comments.module.js';
+import { StoryReactionsModule } from './modules/story-reactions/story-reactions.module.js';
 import { PostCommentsModule } from './modules/post-comments/post-comments.module.js';
 import { PostReactionsModule } from './modules/post-reactions/post-reactions.module.js';
 
@@ -50,6 +52,8 @@ import { PostReactionsModule } from './modules/post-reactions/post-reactions.mod
     NotificationsModule,
     AccountModule,
     StoriesModule,
+    StoryReactionsModule,
+    StoryCommentsModule,
     PostReactionsModule,
     PostCommentsModule,
   ],

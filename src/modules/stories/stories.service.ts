@@ -10,7 +10,7 @@ import { MediaStorage } from '../uploads/media-storage.js';
 import { MediaUrlService } from '../uploads/media-url.service.js';
 import type { CreateStoryDto } from './dto/create-story.dto.js';
 import type { StoryViewDto } from './dto/story-view.dto.js';
-import { STORY_TTL_MS, STORY_VIEW_SELECT } from './story-queries.js';
+import { STORY_TTL_MS, storyViewSelect } from './story-queries.js';
 import { toStoryView } from './story-view.mapper.js';
 
 const mediaNotFound = () =>
@@ -61,7 +61,7 @@ export class StoriesService {
           createdAt: now,
           expiresAt: new Date(now.getTime() + STORY_TTL_MS),
         },
-        select: STORY_VIEW_SELECT,
+        select: storyViewSelect(user.id),
       });
       await this.audit.record(tx, {
         action: 'story.create',
@@ -72,7 +72,7 @@ export class StoriesService {
       });
       return story;
     });
-    const view = toStoryView(row, (key) => this.urls.urlFor(key));
+    const view = toStoryView(row, user.id, (key) => this.urls.urlFor(key));
     if (!view) throw mediaNotAllowed();
     return view;
   }

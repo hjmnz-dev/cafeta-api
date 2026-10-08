@@ -3,7 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service.js';
 import { MediaUrlService } from '../uploads/media-url.service.js';
 import { VisibilityService } from '../visibility/visibility.service.js';
 import type { StoryTrayDto } from './dto/story-view.dto.js';
-import { STORY_VIEW_SELECT, TRAY_LIMIT, trayWhere } from './story-queries.js';
+import { storyViewSelect, TRAY_LIMIT, trayWhere } from './story-queries.js';
 import { toStoryTray } from './story-view.mapper.js';
 
 // Lectura de historias vigentes. La privacidad y los bloqueos los decide
@@ -25,8 +25,8 @@ export class StoriesReadService {
       ),
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: TRAY_LIMIT,
-      select: STORY_VIEW_SELECT,
+      select: storyViewSelect(viewerId),
     });
-    return toStoryTray(rows, (key) => this.urls.urlFor(key));
+    return toStoryTray(rows, viewerId, (key) => this.urls.urlFor(key));
   }
 }

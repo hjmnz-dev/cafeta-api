@@ -8,7 +8,7 @@ import { PrismaService } from '../../prisma/prisma.service.js';
 import { MediaUrlService } from '../uploads/media-url.service.js';
 import type { EditStoryDto } from './dto/edit-story.dto.js';
 import type { StoryViewDto } from './dto/story-view.dto.js';
-import { liveStoryWhere, STORY_VIEW_SELECT } from './story-queries.js';
+import { liveStoryWhere, storyViewSelect } from './story-queries.js';
 import { storyChangeBlock, storyNotFound } from './story-rules.js';
 import { toStoryView } from './story-view.mapper.js';
 
@@ -48,10 +48,10 @@ export class StoryEditsService {
       });
       return tx.story.findUniqueOrThrow({
         where: { id },
-        select: STORY_VIEW_SELECT,
+        select: storyViewSelect(user.id),
       });
     });
-    const view = toStoryView(row, (key) => this.urls.urlFor(key));
+    const view = toStoryView(row, user.id, (key) => this.urls.urlFor(key));
     if (!view) throw storyNotFound();
     return view;
   }
