@@ -9,6 +9,7 @@ const MINUTE_MS = 60_000;
 // guard y apaga el que no le toca con @SkipThrottle:
 // - auth: registro y login, por IP (ThrottlerGuard).
 // - posts: publicar, por usuario (UserThrottlerGuard).
+// - comments: crear y editar comentarios, por usuario (UserThrottlerGuard).
 // ThrottlerModule es global, así que los guards funcionan en cualquier módulo.
 @Module({
   imports: [
@@ -24,6 +25,11 @@ const MINUTE_MS = 60_000;
           name: 'posts',
           ttl: MINUTE_MS,
           limit: config.get('POST_RATE_LIMIT', { infer: true }),
+        },
+        {
+          name: 'comments',
+          ttl: MINUTE_MS,
+          limit: config.get('COMMENT_RATE_LIMIT', { infer: true }),
         },
       ],
     }),
