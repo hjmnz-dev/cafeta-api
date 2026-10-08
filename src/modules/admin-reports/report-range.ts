@@ -10,6 +10,10 @@ export const MAX_RANGE_DAYS = 92;
 const UTC_OFFSET_MS = 4 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+// PostgreSQL no tiene año 0 ni acepta años de 5 dígitos: fuera de estos años la
+// fecha se rechaza aquí en vez de fallar con un 500 al consultar.
+const MIN_YEAR = 2000;
+const MAX_YEAR = 2100;
 
 export interface ReportRange {
   from: string;
@@ -24,6 +28,8 @@ export interface ReportRange {
 
 function localMidnight(day: string): Date | null {
   if (!DATE_PATTERN.test(day)) return null;
+  const year = Number(day.slice(0, 4));
+  if (year < MIN_YEAR || year > MAX_YEAR) return null;
   const utc = new Date(`${day}T00:00:00.000Z`);
   // Rechaza fechas que no existen, como 2026-02-31.
   if (Number.isNaN(utc.getTime()) || utc.toISOString().slice(0, 10) !== day) {

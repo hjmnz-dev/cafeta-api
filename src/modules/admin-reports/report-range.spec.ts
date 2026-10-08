@@ -45,4 +45,14 @@ describe('parseReportRange', () => {
       'INVALID_DATE_RANGE',
     );
   });
+
+  it('rechaza años que PostgreSQL no acepta con INVALID_DATE_RANGE', () => {
+    expect(codeOf(() => parseReportRange('0000-01-01', '0000-01-05'))).toBe(
+      'INVALID_DATE_RANGE',
+    );
+    expect(codeOf(() => parseReportRange('9999-12-30', '9999-12-31'))).toBe(
+      'INVALID_DATE_RANGE',
+    );
+    expect(parseReportRange('2000-01-01', '2000-01-02').days).toHaveLength(2);
+  });
 });

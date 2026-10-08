@@ -66,8 +66,10 @@ describe('Informes administrativos (e2e)', () => {
     const admin = await signUp('admin');
     await prisma.user.update({
       where: { id: admin.id },
-      data: { role: 'ADMIN' },
+      data: { role: 'ADMIN', createdAt: SEP_1_LOCAL },
     });
+    // Su cuenta nace dentro del rango a propósito: "Usuarios nuevos" solo cuenta
+    // estudiantes, y los conteos esperados (y el rango vacío) lo comprueban.
     return admin;
   };
 
