@@ -43,7 +43,7 @@ export class PostsController {
   ) {}
 
   @UseGuards(UserThrottlerGuard)
-  @SkipThrottle({ auth: true, reset: true })
+  @SkipThrottle({ auth: true, reset: true, comments: true })
   @Post()
   create(
     @Body() dto: CreatePostDto,

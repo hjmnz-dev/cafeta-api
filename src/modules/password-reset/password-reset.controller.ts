@@ -21,7 +21,7 @@ export class PasswordResetController {
 
   @Public()
   @UseGuards(ThrottlerGuard)
-  @SkipThrottle({ auth: true, posts: true })
+  @SkipThrottle({ auth: true, posts: true, comments: true })
   @Post('forgot-password')
   @HttpCode(204)
   @ApiOperation({
@@ -37,7 +37,7 @@ export class PasswordResetController {
 
   @Public()
   @UseGuards(ThrottlerGuard)
-  @SkipThrottle({ reset: true, posts: true })
+  @SkipThrottle({ reset: true, posts: true, comments: true })
   @Post('reset-password')
   @HttpCode(204)
   @ApiOperation({

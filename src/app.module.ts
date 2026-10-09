@@ -23,6 +23,7 @@ import { BlocksModule } from './modules/blocks/blocks.module.js';
 import { ReportsModule } from './modules/reports/reports.module.js';
 import { SearchModule } from './modules/search/search.module.js';
 import { NotificationsModule } from './modules/notifications/notifications.module.js';
+import { PostCommentsModule } from './modules/post-comments/post-comments.module.js';
 import { PostReactionsModule } from './modules/post-reactions/post-reactions.module.js';
 import { AdminDashboardModule } from './modules/admin-dashboard/admin-dashboard.module.js';
 import { AdminReportsModule } from './modules/admin-reports/admin-reports.module.js';
@@ -58,6 +59,7 @@ import { AdminUsersModule } from './modules/admin-users/admin-users.module.js';
     NotificationsModule,
     AccountModule,
     PostReactionsModule,
+    PostCommentsModule,
     ReportsModule,
     PasswordResetModule,
     AdminDashboardModule,

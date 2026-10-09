@@ -84,6 +84,11 @@ export class EnvironmentVariables {
   @Min(1)
   POST_RATE_LIMIT: number = 10;
 
+  // Comentarios (crear y editar) por minuto por usuario (spec 0009, decisión 21).
+  @IsInt()
+  @Min(1)
+  COMMENT_RATE_LIMIT: number = 20;
+
   // Blob Storage de los archivos (spec 0008, decisión 13). Opcional: sin ella
   // la API arranca y la subida responde STORAGE_UNAVAILABLE.
   @IsOptional()
