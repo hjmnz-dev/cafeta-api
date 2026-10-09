@@ -22,7 +22,10 @@ function build(changed: boolean) {
   const prisma = {
     $transaction: vi.fn((work: (tx: unknown) => Promise<void>) => work(TX)),
   };
-  const users = { deactivate: vi.fn().mockResolvedValue(changed) };
+  const users = {
+    deactivate: vi.fn().mockResolvedValue(changed),
+    reactivate: vi.fn().mockResolvedValue(changed),
+  };
   const sessions = { revokeAllForUser: vi.fn().mockResolvedValue(undefined) };
   const audit = { record: vi.fn().mockResolvedValue(undefined) };
   const service = new AccountStateService(
@@ -86,6 +89,41 @@ describe('AccountStateService.deactivate', () => {
       status: 409,
     });
     expect(sessions.revokeAllForUser).not.toHaveBeenCalled();
+    expect(audit.record).not.toHaveBeenCalled();
+  });
+});
+
+describe('AccountStateService.reactivate', () => {
+  it('reactiva y audita con el motivo, sin tocar las sesiones', async () => {
+    const { service, users, sessions, audit } = build(true);
+
+    await service.reactivate(USER_ID, actor, 'Fue un error');
+
+    expect(users.reactivate).toHaveBeenCalledWith(
+      TX,
+      USER_ID,
+      expect.any(Date),
+    );
+    expect(sessions.revokeAllForUser).not.toHaveBeenCalled();
+    expect(audit.record).toHaveBeenCalledWith(TX, {
+      action: 'account.reactivate',
+      entityType: 'user',
+      entityId: USER_ID,
+      actor,
+      succeeded: true,
+      metadata: { by: 'admin', reason: 'Fue un error' },
+    });
+  });
+
+  it('si ya estaba activa responde 409 ALREADY_ACTIVE y no audita', async () => {
+    const { service, audit } = build(false);
+
+    await expect(
+      service.reactivate(USER_ID, actor, 'motivo'),
+    ).rejects.toMatchObject({
+      response: { code: 'ALREADY_ACTIVE' },
+      status: 409,
+    });
     expect(audit.record).not.toHaveBeenCalled();
   });
 });

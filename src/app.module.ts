@@ -22,6 +22,7 @@ import { SearchModule } from './modules/search/search.module.js';
 import { NotificationsModule } from './modules/notifications/notifications.module.js';
 import { AdminDashboardModule } from './modules/admin-dashboard/admin-dashboard.module.js';
 import { AdminReportsModule } from './modules/admin-reports/admin-reports.module.js';
+import { AdminUsersModule } from './modules/admin-users/admin-users.module.js';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { AdminReportsModule } from './modules/admin-reports/admin-reports.module
     AccountModule,
     AdminDashboardModule,
     AdminReportsModule,
+    AdminUsersModule,
   ],
   providers: [{ provide: APP_FILTER, useClass: HttpExceptionFilter }],
 })
