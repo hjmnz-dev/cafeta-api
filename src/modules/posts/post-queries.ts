@@ -15,7 +15,8 @@ export const POST_ORDER = [
 ] satisfies Prisma.PostOrderByWithRelationInput[];
 
 // "Para ti" (sin careerId): mías, de quienes sigo con ACCEPTED activo y anuncios.
-// Pestaña de carrera: todas las de autores con esa carrera, los siga o no.
+// Pestaña de carrera: todas las de autores con esa carrera, los siga o no, y
+// los anuncios, que son de toda la comunidad (spec 0009, decisión 36).
 // visibleAuthor es el filtro de VisibilityService (decisión 15); los anuncios
 // institucionales no dependen de la privacidad de quien los publica.
 export function feedWhere(
@@ -28,7 +29,13 @@ export function feedWhere(
   };
   if (careerId) {
     return {
-      AND: [VISIBLE_POST, visible, { author: { profile: { careerId } } }],
+      AND: [
+        VISIBLE_POST,
+        visible,
+        {
+          OR: [{ type: 'ANNOUNCEMENT' }, { author: { profile: { careerId } } }],
+        },
+      ],
     };
   }
   return {
@@ -56,6 +63,16 @@ export function feedWhere(
   };
 }
 
+// Mis publicaciones fuera de la vista pública: archivadas (HU21) o desactivadas
+// (HU23). Solo del autor, y solo mientras su cuenta siga activa.
+export function hiddenWhere(authorId: string): Prisma.PostWhereInput {
+  return {
+    authorId,
+    author: ACTIVE,
+    OR: [{ archivedAt: { not: null } }, { deactivatedAt: { not: null } }],
+  };
+}
+
 export function authorWhere(authorId: string): Prisma.PostWhereInput {
   return { AND: [VISIBLE_POST, { authorId }] };
 }
@@ -70,44 +87,59 @@ export function afterCursor(
   };
 }
 
-// Lo que dibuja la tarjeta. Los conteos solo suman filas activas de usuarios activos.
-export const POST_VIEW_SELECT = {
-  id: true,
-  type: true,
-  content: true,
-  location: true,
-  createdAt: true,
-  editedAt: true,
-  eventStartsAt: true,
-  eventLocation: true,
-  codeSnippet: true,
-  groupName: true,
-  groupSpots: true,
-  media: {
-    select: { storageKey: true, mediaType: true, mimeType: true },
-    orderBy: { position: 'asc' },
-  },
-  author: {
-    select: {
-      id: true,
-      verificationStatus: true,
-      profile: {
-        select: {
-          handle: true,
-          displayName: true,
-          career: { select: { name: true } },
+// Lo que dibuja la tarjeta para quien mira (viewerId). Los conteos solo suman
+// filas activas de usuarios activos; myReaction y savedByMe son mis filas
+// activas, si las hay.
+export const postViewSelect = (viewerId: string) =>
+  ({
+    id: true,
+    type: true,
+    content: true,
+    location: true,
+    createdAt: true,
+    editedAt: true,
+    archivedAt: true,
+    deactivatedAt: true,
+    eventStartsAt: true,
+    eventLocation: true,
+    codeSnippet: true,
+    groupName: true,
+    groupSpots: true,
+    media: {
+      select: { storageKey: true, mediaType: true, mimeType: true },
+      orderBy: { position: 'asc' },
+    },
+    author: {
+      select: {
+        id: true,
+        verificationStatus: true,
+        profile: {
+          select: {
+            handle: true,
+            displayName: true,
+            career: { select: { name: true } },
+          },
         },
       },
     },
-  },
-  _count: {
-    select: {
-      reactions: { where: { deactivatedAt: null, user: ACTIVE } },
-      comments: { where: { deactivatedAt: null, author: ACTIVE } },
+    reactions: {
+      where: { userId: viewerId, deactivatedAt: null },
+      select: { type: true },
+      take: 1,
     },
-  },
-} satisfies Prisma.PostSelect;
+    savedBy: {
+      where: { userId: viewerId, deactivatedAt: null },
+      select: { id: true },
+      take: 1,
+    },
+    _count: {
+      select: {
+        reactions: { where: { deactivatedAt: null, user: ACTIVE } },
+        comments: { where: { deactivatedAt: null, author: ACTIVE } },
+      },
+    },
+  }) satisfies Prisma.PostSelect;
 
 export type PostViewRow = Prisma.PostGetPayload<{
-  select: typeof POST_VIEW_SELECT;
+  select: ReturnType<typeof postViewSelect>;
 }>;

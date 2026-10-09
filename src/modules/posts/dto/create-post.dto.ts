@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 import {
   ArrayMaxSize,
   ArrayUnique,
@@ -36,6 +36,16 @@ export const MaxCodePoints = (max: number) =>
   });
 
 export class CreatePostDto {
+  /**
+   * Solo existe para rechazar el intento: `ANNOUNCEMENT` da 403
+   * ANNOUNCEMENT_NOT_ALLOWED (los anuncios van por /admin/announcements). No
+   * se publica en el contrato.
+   */
+  @ApiHideProperty()
+  @IsOptional()
+  @IsIn(['ANNOUNCEMENT'])
+  type?: 'ANNOUNCEMENT';
+
   /** Texto de hasta 2000 caracteres. Puede faltar solo si hay adjuntos (HU20 E2). */
   @IsOptional()
   @IsString()

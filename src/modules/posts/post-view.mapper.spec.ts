@@ -12,6 +12,8 @@ const row = (overrides: Partial<PostViewRow> = {}): PostViewRow => ({
   location: 'Auditorio',
   createdAt: new Date('2026-09-26T10:00:00.000Z'),
   editedAt: new Date('2026-09-26T11:00:00.000Z'),
+  archivedAt: null,
+  deactivatedAt: null,
   eventStartsAt: new Date('2026-10-10T14:00:00.000Z'),
   eventLocation: 'Laboratorio 3',
   codeSnippet: null,
@@ -29,6 +31,8 @@ const row = (overrides: Partial<PostViewRow> = {}): PostViewRow => ({
       career: { name: 'Ingeniería de Software' },
     },
   },
+  reactions: [],
+  savedBy: [],
   _count: { reactions: 12, comments: 3 },
   ...overrides,
 });
@@ -38,6 +42,7 @@ describe('toPostView', () => {
     expect(toPostView(row(), urlFor)).toEqual({
       id: '01926f00-0000-7000-8000-000000000065',
       type: 'EVENT',
+      state: 'ACTIVE',
       content: 'Hackathon',
       location: 'Auditorio',
       createdAt: '2026-09-26T10:00:00.000Z',
@@ -63,7 +68,22 @@ describe('toPostView', () => {
       },
       reactionCount: 12,
       commentCount: 3,
+      myReaction: null,
+      savedByMe: false,
     });
+  });
+
+  it('myReaction lleva el tipo de mi reacción activa', () => {
+    const view = toPostView(row({ reactions: [{ type: 'FIRE' }] }), urlFor);
+
+    expect(view.myReaction).toBe('FIRE');
+  });
+
+  it('savedByMe es true solo si tengo la publicación guardada (spec 0009, decisión 19)', () => {
+    expect(toPostView(row(), urlFor).savedByMe).toBe(false);
+    expect(
+      toPostView(row({ savedBy: [{ id: 'guardada' }] }), urlFor).savedByMe,
+    ).toBe(true);
   });
 
   it('las fechas opcionales vacías quedan en null', () => {
@@ -123,6 +143,19 @@ describe('toPostView', () => {
       'verified',
     ]);
     expect(JSON.stringify(view)).not.toContain('verificationStatus');
+  });
+});
+
+describe('toPostView state', () => {
+  it('ARCHIVED si tiene archivedAt, DEACTIVATED si tiene deactivatedAt, y esta gana', () => {
+    const at = new Date('2026-09-27T10:00:00.000Z');
+    expect(toPostView(row({ archivedAt: at }), urlFor).state).toBe('ARCHIVED');
+    expect(toPostView(row({ deactivatedAt: at }), urlFor).state).toBe(
+      'DEACTIVATED',
+    );
+    expect(
+      toPostView(row({ archivedAt: at, deactivatedAt: at }), urlFor).state,
+    ).toBe('DEACTIVATED');
   });
 });
 

@@ -14,11 +14,19 @@ import {
   afterCursor,
   authorWhere,
   feedWhere,
+  hiddenWhere,
   POST_ORDER,
-  POST_VIEW_SELECT,
+  postViewSelect,
+  VISIBLE_POST,
 } from './post-queries.js';
 import { MediaUrlService } from '../uploads/media-url.service.js';
 import { toPostPage } from './post-view.mapper.js';
+
+// Lo mínimo de una publicación visible que otro módulo necesita (reportes, decisión 30).
+export type VisiblePostSummary = Pick<
+  Prisma.PostGetPayload<object>,
+  'authorId' | 'type' | 'content'
+>;
 
 // Lecturas de publicaciones (spec 0005). La privacidad y los bloqueos los
 // decide VisibilityService (decisión 15).
@@ -32,7 +40,16 @@ export class PostsReadService {
 
   feed(userId: string, query: FeedQueryDto): Promise<PostPageDto> {
     const visibleAuthor = this.visibility.contentAuthorWhere(userId);
-    return this.page(feedWhere(userId, visibleAuthor, query.careerId), query);
+    return this.page(
+      userId,
+      feedWhere(userId, visibleAuthor, query.careerId),
+      query,
+    );
+  }
+
+  // Mis archivadas y desactivadas (HU21, HU23): solo las veo yo.
+  hidden(userId: string, query: PageQueryDto): Promise<PostPageDto> {
+    return this.page(userId, hiddenWhere(userId), query);
   }
 
   // Publicaciones de un perfil: 404 si quien mira no ve el perfil, 403 si lo ve
@@ -49,7 +66,7 @@ export class PostsReadService {
         code: 'PROFILE_RESTRICTED',
       });
     }
-    return this.page(authorWhere(authorId), query);
+    return this.page(viewerId, authorWhere(authorId), query);
   }
 
   // El conteo forma parte del perfil limitado: solo pide que el perfil se vea.
@@ -61,6 +78,14 @@ export class PostsReadService {
     return this.countByAuthor(authorId);
   }
 
+  // null si no existe, está archivada o desactivada. No mira la privacidad del autor.
+  visibleSummary(id: string): Promise<VisiblePostSummary | null> {
+    return this.prisma.post.findFirst({
+      where: { id, ...VISIBLE_POST },
+      select: { authorId: true, type: true, content: true },
+    });
+  }
+
   async countByAuthor(authorId: string): Promise<PostCountDto> {
     return {
       count: await this.prisma.post.count({ where: authorWhere(authorId) }),
@@ -68,6 +93,7 @@ export class PostsReadService {
   }
 
   private async page(
+    viewerId: string,
     where: Prisma.PostWhereInput,
     { cursor, limit }: PageQueryDto,
   ): Promise<PostPageDto> {
@@ -76,7 +102,7 @@ export class PostsReadService {
       where: after ? { AND: [where, after] } : where,
       orderBy: POST_ORDER,
       take: limit + 1,
-      select: POST_VIEW_SELECT,
+      select: postViewSelect(viewerId),
     });
     return toPostPage(rows, limit, (key) => this.urls.urlFor(key));
   }
