@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { FollowsService } from '../follows/follows.service.js';
+import { MediaUrlService } from '../uploads/media-url.service.js';
 import { PostsReadService } from '../posts/posts-read.service.js';
 import { UsersService } from '../users/users.service.js';
 import { canFollow, canSeeContent } from '../visibility/visibility-rules.js';
@@ -14,6 +15,7 @@ export class ProfilesService {
     private readonly users: UsersService,
     private readonly follows: FollowsService,
     private readonly posts: PostsReadService,
+    private readonly urls: MediaUrlService,
   ) {}
 
   async view(viewerId: string, userId: string): Promise<ProfileViewDto> {
@@ -34,7 +36,9 @@ export class ProfilesService {
       id: userId,
       handle: profile.handle,
       displayName: profile.displayName,
+      careerId: profile.careerId,
       careerName: profile.careerName,
+      avatarUrl: profile.avatarKey ? this.urls.urlFor(profile.avatarKey) : null,
       verified: profile.verified,
       visibility: facts.visibility,
       isSelf: facts.isSelf,
@@ -42,6 +46,7 @@ export class ProfilesService {
       followStatus: facts.followStatus ?? 'NONE',
       canFollow: canFollow(facts),
       bio: full ? profile.bio : null,
+      location: full ? profile.location : null,
       tags: full ? profile.tags : [],
       counts: { posts: posts.count, ...follows },
     };

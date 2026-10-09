@@ -1,6 +1,7 @@
-// Versión de los términos aceptados al registrarse. Provisional hasta que la
-// funcionalidad 12 publique los textos (spec 0004).
-export const TERMS_VERSION = '2026-09-borrador';
+// Versión de los términos aceptados al registrarse. Es la misma cadena que
+// muestra la web en `lib/legal.ts`; al cambiar los textos se cambian las dos
+// (spec 0009, decisión 12).
+export const TERMS_VERSION = '2026-10';
 
 export const BCRYPT_COST = 12;
 

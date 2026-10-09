@@ -24,6 +24,8 @@ export interface CurrentUser {
   email: string;
   role: Role;
   verificationStatus: VerificationStatus;
+  /** Fecha de registro en ISO 8601 ("miembro desde" en Configuración). */
+  createdAt: string;
   profile: { handle: string; displayName: string; careerId: string | null };
 }
 
@@ -39,6 +41,7 @@ const CURRENT_USER_SELECT = {
   email: true,
   role: true,
   verificationStatus: true,
+  createdAt: true,
   profile: { select: { handle: true, displayName: true, careerId: true } },
 } as const;
 
@@ -46,6 +49,9 @@ export interface ProfileRecord {
   handle: string;
   displayName: string;
   bio: string | null;
+  location: string | null;
+  avatarKey: string | null;
+  careerId: string | null;
   careerName: string | null;
   verified: boolean;
   tags: { label: string; category: TagCategory }[];
@@ -116,6 +122,9 @@ export class UsersService {
         handle: true,
         displayName: true,
         bio: true,
+        location: true,
+        avatarKey: true,
+        careerId: true,
         career: { select: { name: true } },
         user: { select: { verificationStatus: true } },
         tags: {
@@ -129,6 +138,9 @@ export class UsersService {
       handle: profile.handle,
       displayName: profile.displayName,
       bio: profile.bio,
+      location: profile.location,
+      avatarKey: profile.avatarKey,
+      careerId: profile.careerId,
       careerName: profile.career?.name ?? null,
       verified: profile.user.verificationStatus === 'VERIFIED',
       tags: profile.tags,
@@ -165,6 +177,7 @@ function toCurrentUser(user: {
   email: string;
   role: Role;
   verificationStatus: VerificationStatus;
+  createdAt: Date;
   profile: {
     handle: string;
     displayName: string;
@@ -179,6 +192,7 @@ function toCurrentUser(user: {
     email: user.email,
     role: user.role,
     verificationStatus: user.verificationStatus,
+    createdAt: user.createdAt.toISOString(),
     profile: user.profile,
   };
 }

@@ -3,6 +3,7 @@ import { AuditModule } from '../../common/audit/audit.module.js';
 import { UploadsModule } from '../uploads/uploads.module.js';
 import { PostArchiveService } from './post-archive.service.js';
 import { PostAuthorService } from './post-author.service.js';
+import { PostModerationService } from './post-moderation.service.js';
 import { PostsReadService } from './posts-read.service.js';
 import { PostsController } from './posts.controller.js';
 import { PostsService } from './posts.service.js';
@@ -18,7 +19,8 @@ import { VisibilityModule } from '../visibility/visibility.module.js';
     PostsReadService,
     PostAuthorService,
     PostArchiveService,
+    PostModerationService,
   ],
-  exports: [PostsReadService],
+  exports: [PostsService, PostsReadService, PostModerationService],
 })
 export class PostsModule {}
