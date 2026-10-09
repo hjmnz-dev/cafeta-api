@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import type {
   ActorContext,
   AuthenticatedUser,
@@ -33,12 +33,16 @@ const created: PostViewRow = {
   location: 'Biblioteca',
   createdAt: new Date('2026-09-26T10:00:00.000Z'),
   editedAt: null,
+  archivedAt: null,
+  deactivatedAt: null,
   eventStartsAt: null,
   eventLocation: null,
   codeSnippet: null,
   groupName: null,
   groupSpots: null,
   media: [],
+  reactions: [],
+  savedBy: [],
   author: {
     id: user.id,
     verificationStatus: 'PENDING',
@@ -140,6 +144,51 @@ describe('PostsService.create', () => {
     await expect(
       service.create({ content: 'Hola' }, user, actor),
     ).rejects.toThrow('bitácora caída');
+  });
+});
+
+describe('PostsService y los anuncios (spec 0009, decisión 36)', () => {
+  it('create rechaza type ANNOUNCEMENT con 403 ANNOUNCEMENT_NOT_ALLOWED, también a un admin, sin abrir transacción', async () => {
+    const { service, $transaction } = setup();
+    const admin: AuthenticatedUser = { ...user, role: 'ADMIN' };
+
+    for (const who of [user, admin]) {
+      const error = await service
+        .create({ content: 'Aviso', type: 'ANNOUNCEMENT' }, who, actor)
+        .catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(ForbiddenException);
+      expect((error as ForbiddenException).getResponse()).toMatchObject({
+        code: 'ANNOUNCEMENT_NOT_ALLOWED',
+      });
+    }
+    expect($transaction).not.toHaveBeenCalled();
+  });
+
+  it('publish guarda el tipo y audita con el código que fija quien llama', async () => {
+    const { service, tx, record } = setup();
+
+    await service.publish({ content: 'Aviso' }, user, actor, {
+      type: 'ANNOUNCEMENT',
+      action: 'announcement.create',
+    });
+
+    expect(tx.post.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          authorId: user.id,
+          type: 'ANNOUNCEMENT',
+          content: 'Aviso',
+        }),
+      }),
+    );
+    expect(record).toHaveBeenCalledWith(
+      tx,
+      expect.objectContaining({
+        action: 'announcement.create',
+        entityType: 'post',
+        entityId: created.id,
+      }),
+    );
   });
 });
 

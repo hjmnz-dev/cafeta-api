@@ -8,7 +8,7 @@ import {
   authorWhere,
   feedWhere,
   POST_ORDER,
-  POST_VIEW_SELECT,
+  postViewSelect,
 } from './post-queries.js';
 import { PostsReadService } from './posts-read.service.js';
 
@@ -58,7 +58,7 @@ describe('PostsReadService', () => {
       where: feedWhere(ME, VISIBLE_AUTHOR),
       orderBy: POST_ORDER,
       take: 21,
-      select: POST_VIEW_SELECT,
+      select: postViewSelect(ME),
     });
     expect(post.findUnique).not.toHaveBeenCalled();
   });
