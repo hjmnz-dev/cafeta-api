@@ -4,15 +4,23 @@ import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { AppModule } from '../src/app.module.js';
 import { configureApp } from '../src/app.setup.js';
-import type { ReportReason } from '../src/generated/prisma/client.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
 import { resetDb } from './support/reset-db.js';
 
-// Revisión de reportes de la consola (spec 0009, decisión 33) contra PostgreSQL real.
+// Informes administrativos (spec 0008, decisión 35) contra PostgreSQL real.
+// HU44 E1: generar con datos reales y descargar. HU44 E2: rango sin datos.
 const PASSWORD = 'clave-segura-2026';
 const BASE = '/api/v1/admin/reports';
+const RANGE = 'from=2026-09-01&to=2026-09-03';
 
-describe('Revisión de reportes del admin (e2e)', () => {
+// Santo Domingo es UTC-4: el 1 de septiembre local va de 04:00Z a 03:59Z del 2.
+const SEP_1_LOCAL = new Date('2026-09-01T15:00:00.000Z');
+const SEP_1_LATE_NIGHT = new Date('2026-09-02T03:30:00.000Z'); // 23:30 local del 1
+const SEP_2_MIDNIGHT = new Date('2026-09-02T04:00:00.000Z'); // 00:00 local del 2
+const AUG_31_LATE_NIGHT = new Date('2026-09-01T03:59:00.000Z'); // 23:59 local del 31 ago
+const OUT_OF_RANGE = new Date('2026-09-04T04:00:00.000Z');
+
+describe('Informes administrativos (e2e)', () => {
   let app: NestExpressApplication;
   let server: App;
   let prisma: PrismaService;
@@ -35,7 +43,7 @@ describe('Revisión de reportes del admin (e2e)', () => {
 
   beforeEach(async () => {
     await resetDb(prisma);
-    careerId = (await prisma.career.create({ data: { name: 'Sistemas' } })).id;
+    careerId = (await prisma.career.create({ data: { name: 'Carrera' } })).id;
   });
 
   const signUp = async (handle: string) => {
@@ -51,598 +59,285 @@ describe('Revisión de reportes del admin (e2e)', () => {
         acceptTerms: true,
       })
       .expect(201);
-    return {
-      id: res.body.user.id as string,
-      token: res.body.accessToken as string,
-      email: `${handle}@est.intec.edu.do`,
-    };
+    return { id: res.body.user.id as string, token: res.body.accessToken };
   };
 
-  const signUpAdmin = async (handle: string) => {
-    const admin = await signUp(handle);
+  const signUpAdmin = async () => {
+    const admin = await signUp('admin');
     await prisma.user.update({
       where: { id: admin.id },
-      data: { role: 'ADMIN' },
+      data: { role: 'ADMIN', createdAt: SEP_1_LOCAL },
     });
+    // Su cuenta nace dentro del rango a propósito: "Usuarios nuevos" solo cuenta
+    // estudiantes, y los conteos esperados (y el rango vacío) lo comprueban.
     return admin;
   };
 
-  const publish = async (token: string, content: string) =>
-    (
-      await request(server)
-        .post('/api/v1/posts')
-        .set('Authorization', `Bearer ${token}`)
-        .send({ content })
-        .expect(201)
-    ).body.id as string;
-
-  // Los reportes los crea la 30 (POST /reports); aquí se insertan como ella.
-  const reportUser = (
-    reporterId: string,
-    targetUserId: string,
-    reason: ReportReason = 'SPAM',
-    createdAt = new Date(),
-  ) =>
-    prisma.report.create({
-      data: {
-        reporterId,
-        targetType: 'USER',
-        targetUserId,
-        reason,
-        pendingKey: `USER:${targetUserId}`,
-        createdAt,
-      },
-    });
-
-  const reportPost = (
-    reporterId: string,
-    postId: string,
-    snapshot: string,
-    reason: ReportReason = 'SPAM',
-    createdAt = new Date(),
-  ) =>
-    prisma.report.create({
-      data: {
-        reporterId,
-        targetType: 'POST',
-        targetPostId: postId,
-        targetSnapshot: snapshot,
-        reason,
-        pendingKey: `POST:${postId}`,
-        createdAt,
-      },
-    });
-
-  const get = (token: string, path = '') =>
+  const get = (token: string, path: string) =>
     request(server)
-      .get(`${BASE}${path}`)
+      .get(`${BASE}/${path}`)
       .set('Authorization', `Bearer ${token}`);
 
-  const resolve = (token: string, id: string, body: object) =>
-    request(server)
-      .post(`${BASE}/${id}/resolve`)
-      .set('Authorization', `Bearer ${token}`)
-      .send(body);
+  // Los registros de prueba nacen "hoy"; los movemos al rango del informe.
+  const setCreatedAt = (id: string, createdAt: Date) =>
+    prisma.user.update({ where: { id }, data: { createdAt } });
 
-  const auditOf = (action: string, entityId: string) =>
-    prisma.auditLog.findMany({ where: { action, entityId } });
+  const seedActivity = async () => {
+    const ana = await signUp('ana');
+    const beto = await signUp('beto');
+    await setCreatedAt(ana.id, SEP_1_LOCAL);
+    await setCreatedAt(beto.id, OUT_OF_RANGE);
 
-  describe('GET /admin/reports', () => {
-    it('lista los pendientes, el más antiguo primero, con reportante y objetivo', async () => {
-      const admin = await signUpAdmin('admin');
-      const ana = await signUp('ana');
-      const beto = await signUp('beto');
-      const carla = await signUp('carla');
-      const old = await reportUser(
-        ana.id,
-        beto.id,
-        'HARASSMENT',
-        new Date(Date.now() - 60_000),
-      );
-      const recent = await reportUser(carla.id, beto.id, 'SPAM');
-
-      const res = await get(admin.token).expect(200);
-
-      expect(res.body.items.map((r: { id: string }) => r.id)).toEqual([
-        old.id,
-        recent.id,
-      ]);
-      expect(res.body.items[0]).toMatchObject({
-        targetType: 'USER',
-        reason: 'HARASSMENT',
-        status: 'PENDING',
-        reporter: { id: ana.id, handle: 'ana' },
-        target: { userId: beto.id, handle: 'beto', active: true },
-        otherPending: 1,
+    const post = (createdAt: Date, extra: object = {}) =>
+      prisma.post.create({
+        data: { authorId: ana.id, content: 'hola', createdAt, ...extra },
       });
-      expect(res.body.nextCursor).toBeNull();
+    const p1 = await post(SEP_1_LATE_NIGHT);
+    await post(SEP_2_MIDNIGHT);
+    await post(AUG_31_LATE_NIGHT);
+    // Desactivada después: sigue contando, porque el informe mide actividad.
+    await post(SEP_1_LOCAL, { deactivatedAt: new Date() });
+
+    await prisma.story.create({
+      data: {
+        authorId: ana.id,
+        text: 'hi',
+        expiresAt: new Date('2026-09-02T15:00:00.000Z'),
+        createdAt: SEP_1_LOCAL,
+      },
+    });
+    await prisma.postComment.create({
+      data: {
+        postId: p1.id,
+        authorId: beto.id,
+        content: 'c',
+        createdAt: SEP_2_MIDNIGHT,
+      },
     });
 
-    it('una publicación trae la copia del reporte, el texto actual y su estado', async () => {
-      const admin = await signUpAdmin('admin');
-      const ana = await signUp('ana');
-      const beto = await signUp('beto');
-      const postId = await publish(beto.token, 'Texto original');
-      await reportPost(ana.id, postId, 'Texto original');
-      await prisma.post.update({
-        where: { id: postId },
-        data: { content: 'Texto editado', archivedAt: new Date() },
+    const [userAId, userBId] = [ana.id, beto.id].sort();
+    const conversation = await prisma.conversation.create({
+      data: { userAId, userBId },
+    });
+    await prisma.message.create({
+      data: {
+        conversationId: conversation.id,
+        senderId: ana.id,
+        content: 'm',
+        createdAt: SEP_2_MIDNIGHT,
+      },
+    });
+  };
+
+  it('AC-1: el informe de actividad cuenta por día en hora de Santo Domingo', async () => {
+    const admin = await signUpAdmin();
+    await seedActivity();
+
+    const res = await get(admin.token, `activity?${RANGE}`).expect(200);
+
+    expect(res.body).toMatchObject({
+      kind: 'activity',
+      from: '2026-09-01',
+      to: '2026-09-03',
+      isEmpty: false,
+      columns: [
+        'Fecha',
+        'Usuarios nuevos',
+        'Publicaciones',
+        'Historias',
+        'Comentarios',
+        'Mensajes',
+      ],
+    });
+    // 23:30 local del 1 sigue siendo el 1; 00:00 local del 2 ya es el 2; el
+    // 23:59 del 31 de agosto queda fuera.
+    expect(res.body.rows).toEqual([
+      ['2026-09-01', 1, 2, 1, 0, 0],
+      ['2026-09-02', 0, 1, 0, 1, 1],
+      ['2026-09-03', 0, 0, 0, 0, 0],
+    ]);
+  });
+
+  it('AC-2: el informe de moderación cuenta por motivo y estado', async () => {
+    const admin = await signUpAdmin();
+    const ana = await signUp('ana');
+    const beto = await signUp('beto');
+    const report = (
+      reporterId: string,
+      targetUserId: string,
+      reason: 'SPAM' | 'HARASSMENT',
+      status: 'PENDING' | 'SANCTIONED' | 'DISMISSED',
+      createdAt: Date,
+      resolvedAt?: Date,
+    ) =>
+      prisma.report.create({
+        data: {
+          reporterId,
+          targetType: 'USER',
+          targetUserId,
+          reason,
+          status,
+          // La base exige pending_key solo mientras el reporte está pendiente.
+          ...(status === 'PENDING'
+            ? { pendingKey: `USER:${targetUserId}` }
+            : {}),
+          createdAt,
+          ...(resolvedAt ? { resolvedAt, resolvedById: admin.id } : {}),
+        },
       });
+    await report(ana.id, beto.id, 'SPAM', 'PENDING', SEP_1_LOCAL);
+    await report(
+      beto.id,
+      ana.id,
+      'SPAM',
+      'SANCTIONED',
+      SEP_1_LOCAL,
+      SEP_2_MIDNIGHT,
+    );
+    await report(
+      beto.id,
+      ana.id,
+      'HARASSMENT',
+      'DISMISSED',
+      SEP_1_LOCAL,
+      SEP_2_MIDNIGHT,
+    );
+    // Creado antes del rango y resuelto dentro: cuenta como sanción, no como creado.
+    await report(
+      ana.id,
+      beto.id,
+      'HARASSMENT',
+      'SANCTIONED',
+      new Date('2026-08-01T15:00:00.000Z'),
+      SEP_2_MIDNIGHT,
+    );
 
-      const res = await get(admin.token).expect(200);
+    const res = await get(admin.token, `moderation?${RANGE}`).expect(200);
 
-      expect(res.body.items[0].target).toMatchObject({
-        postId,
-        handle: 'beto',
-        snapshot: 'Texto original',
-        currentContent: 'Texto editado',
-        postState: 'ARCHIVED',
-        active: true,
-      });
+    expect(res.body.columns).toEqual([
+      'Motivo',
+      'Creados',
+      'Resueltos',
+      'Sancionados',
+      'Descartados',
+      'Pendientes',
+    ]);
+    expect(res.body.isEmpty).toBe(false);
+    expect(res.body.rows).toEqual([
+      ['Spam', 2, 1, 1, 0, 1],
+      ['Acoso', 1, 2, 1, 1, 0],
+      ['Contenido inapropiado', 0, 0, 0, 0, 0],
+      ['Suplantación de identidad', 0, 0, 0, 0, 0],
+      ['Otro', 0, 0, 0, 0, 0],
+      ['Total', 3, 3, 2, 1, 1],
+    ]);
+  });
+
+  it('AC-3: la descarga es un CSV UTF-8 con BOM y nombre con el rango', async () => {
+    const admin = await signUpAdmin();
+    await seedActivity();
+
+    const res = await get(admin.token, `activity/csv?${RANGE}`)
+      .buffer(true)
+      .parse((r, done) => {
+        const chunks: Buffer[] = [];
+        r.on('data', (c: Buffer) => chunks.push(c));
+        r.on('end', () => done(null, Buffer.concat(chunks)));
+      })
+      .expect(200);
+
+    expect(res.headers['content-type']).toContain('text/csv');
+    expect(res.headers['content-disposition']).toContain(
+      'cafeta-actividad-2026-09-01-2026-09-03.csv',
+    );
+    const body = res.body as Buffer;
+    expect([...body.subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
+    expect(body.toString('utf-8')).toBe(
+      '﻿Fecha,Usuarios nuevos,Publicaciones,Historias,Comentarios,Mensajes\r\n' +
+        '2026-09-01,1,2,1,0,0\r\n' +
+        '2026-09-02,0,1,0,1,1\r\n' +
+        '2026-09-03,0,0,0,0,0\r\n',
+    );
+  });
+
+  it('AC-4: un rango sin actividad responde isEmpty para avisar que no hay datos', async () => {
+    const admin = await signUpAdmin();
+
+    const activity = await get(admin.token, `activity?${RANGE}`).expect(200);
+    expect(activity.body.isEmpty).toBe(true);
+    expect(activity.body.rows).toHaveLength(3);
+
+    const moderation = await get(admin.token, `moderation?${RANGE}`).expect(
+      200,
+    );
+    expect(moderation.body.isEmpty).toBe(true);
+  });
+
+  it('AC-5: valida el rango con códigos estables', async () => {
+    const admin = await signUpAdmin();
+    const code = async (query: string) =>
+      (await get(admin.token, `activity?${query}`).expect(400)).body.code;
+
+    expect(await code('from=2026-09-05&to=2026-09-01')).toBe(
+      'INVALID_DATE_RANGE',
+    );
+    expect(await code('from=2026-02-31&to=2026-03-05')).toBe(
+      'INVALID_DATE_RANGE',
+    );
+    expect(await code('from=2026-07-01&to=2026-10-01')).toBe('RANGE_TOO_LARGE');
+    expect(await code('from=ayer&to=hoy')).toBe('VALIDATION_ERROR');
+    expect(await code('from=2026-09-01')).toBe('VALIDATION_ERROR');
+    expect(
+      (await get(admin.token, `otro?${RANGE}`).expect(400)).body.code,
+    ).toBe('VALIDATION_ERROR');
+    await get(admin.token, 'activity?from=2026-07-01&to=2026-09-30').expect(
+      200,
+    );
+  });
+
+  it('AC-6: cada generación queda auditada con report.generate', async () => {
+    const admin = await signUpAdmin();
+
+    await get(admin.token, `activity?${RANGE}`).expect(200);
+    await get(admin.token, `moderation/csv?${RANGE}`).expect(200);
+    await get(admin.token, 'activity?from=2026-09-05&to=2026-09-01').expect(
+      400,
+    );
+
+    const entries = await prisma.auditLog.findMany({
+      where: { action: 'report.generate' },
+      orderBy: { createdAt: 'asc' },
     });
-
-    it('filtra por tipo y por estado; los resueltos van del más reciente', async () => {
-      const admin = await signUpAdmin('admin');
-      const ana = await signUp('ana');
-      const beto = await signUp('beto');
-      const carla = await signUp('carla');
-      const postId = await publish(beto.token, 'Algo');
-      const userReport = await reportUser(ana.id, beto.id);
-      const postReport = await reportPost(ana.id, postId, 'Algo');
-      const other = await reportUser(ana.id, carla.id);
-      await resolve(admin.token, userReport.id, { action: 'DISMISS' }).expect(
-        204,
-      );
-      await resolve(admin.token, other.id, { action: 'DISMISS' }).expect(204);
-
-      const pending = await get(admin.token, '?targetType=POST').expect(200);
-      expect(pending.body.items.map((r: { id: string }) => r.id)).toEqual([
-        postReport.id,
-      ]);
-      const done = await get(admin.token, '?status=DISMISSED').expect(200);
-      expect(done.body.items.map((r: { id: string }) => r.id)).toEqual([
-        other.id,
-        userReport.id,
-      ]);
-      expect(done.body.items[0].resolvedBy.id).toBe(admin.id);
+    expect(entries).toHaveLength(2);
+    expect(entries[0]).toMatchObject({
+      actorId: admin.id,
+      actorRole: 'ADMIN',
+      entityType: 'report',
+      succeeded: true,
     });
-
-    it('pagina con cursor y rechaza uno que no es de la lista', async () => {
-      const admin = await signUpAdmin('admin');
-      const ana = await signUp('ana');
-      const beto = await signUp('beto');
-      const carla = await signUp('carla');
-      const r1 = await reportUser(
-        ana.id,
-        beto.id,
-        'SPAM',
-        new Date(Date.now() - 3000),
-      );
-      const r2 = await reportUser(
-        ana.id,
-        carla.id,
-        'SPAM',
-        new Date(Date.now() - 2000),
-      );
-      const r3 = await reportUser(
-        beto.id,
-        carla.id,
-        'SPAM',
-        new Date(Date.now() - 1000),
-      );
-
-      const first = await get(admin.token, '?limit=2').expect(200);
-      expect(first.body.items.map((r: { id: string }) => r.id)).toEqual([
-        r1.id,
-        r2.id,
-      ]);
-      const second = await get(
-        admin.token,
-        `?limit=2&cursor=${first.body.nextCursor}`,
-      ).expect(200);
-      expect(second.body.items.map((r: { id: string }) => r.id)).toEqual([
-        r3.id,
-      ]);
-      expect(second.body.nextCursor).toBeNull();
-
-      await resolve(admin.token, r1.id, { action: 'DISMISS' }).expect(204);
-      const res = await get(admin.token, `?cursor=${r1.id}`).expect(400);
-      expect(res.body.code).toBe('INVALID_CURSOR');
+    expect(entries[0].metadata).toMatchObject({
+      kind: 'activity',
+      from: '2026-09-01',
+      to: '2026-09-03',
+      format: 'json',
+      rows: 3,
     });
+    expect(entries[1].metadata).toMatchObject({
+      kind: 'moderation',
+      format: 'csv',
+    });
+  });
 
-    it('un estudiante recibe 403 y queda access.denied; sin sesión 401', async () => {
-      const ana = await signUp('ana');
+  it('AC-7: un estudiante recibe 403 FORBIDDEN y sin sesión 401', async () => {
+    const ana = await signUp('ana');
 
-      const res = await get(ana.token).expect(403);
-
+    for (const path of [`activity?${RANGE}`, `moderation/csv?${RANGE}`]) {
+      const res = await get(ana.token, path).expect(403);
       expect(res.body.code).toBe('FORBIDDEN');
-      expect(
-        await prisma.auditLog.count({
-          where: { action: 'access.denied', actorId: ana.id },
-        }),
-      ).toBe(1);
-      await request(server).get(BASE).expect(401);
-    });
-
-    it('rechaza un filtro con un valor que no existe', async () => {
-      const admin = await signUpAdmin('admin');
-      await get(admin.token, '?status=OPEN').expect(400);
-      await get(admin.token, '?targetType=STORY').expect(400);
-    });
-  });
-
-  describe('GET /admin/reports/:id', () => {
-    it('trae el detalle con los otros pendientes sobre el mismo objetivo', async () => {
-      const admin = await signUpAdmin('admin');
-      const ana = await signUp('ana');
-      const beto = await signUp('beto');
-      const carla = await signUp('carla');
-      const first = await reportUser(ana.id, carla.id, 'SPAM');
-      const second = await reportUser(beto.id, carla.id, 'IMPERSONATION');
-
-      const res = await get(admin.token, `/${first.id}`).expect(200);
-
-      expect(res.body.id).toBe(first.id);
-      expect(res.body.otherPending).toBe(1);
-      expect(res.body.related).toHaveLength(1);
-      expect(res.body.related[0]).toMatchObject({
-        id: second.id,
-        reason: 'IMPERSONATION',
-        reporter: { handle: 'beto' },
-      });
-    });
-
-    it('responde 404 REPORT_NOT_FOUND y 400 para un id mal formado', async () => {
-      const admin = await signUpAdmin('admin');
-
-      const res = await get(
-        admin.token,
-        '/01926f00-0000-7000-8000-0000000000ff',
-      ).expect(404);
-
-      expect(res.body.code).toBe('REPORT_NOT_FOUND');
-      await get(admin.token, '/no-es-uuid').expect(400);
-    });
-
-    it('una publicación borrada después del reporte se ve como DELETED con su copia', async () => {
-      const admin = await signUpAdmin('admin');
-      const ana = await signUp('ana');
-      const beto = await signUp('beto');
-      const postId = await publish(beto.token, 'Lo borraré');
-      const report = await reportPost(ana.id, postId, 'Lo borraré');
-      await request(server)
-        .delete(`/api/v1/posts/${postId}`)
-        .set('Authorization', `Bearer ${beto.token}`)
-        .expect(204);
-
-      const res = await get(admin.token, `/${report.id}`).expect(200);
-
-      expect(res.body.target).toMatchObject({
-        postId: null,
-        handle: null,
-        snapshot: 'Lo borraré',
-        postState: 'DELETED',
-        active: null,
-      });
-      expect(res.body.otherPending).toBe(0);
-      expect(res.body.related).toEqual([]);
-    });
-  });
-
-  describe('POST /admin/reports/:id/resolve', () => {
-    it('desestimar cierra solo ese reporte, no toca la cuenta y deja la auditoría', async () => {
-      const admin = await signUpAdmin('admin');
-      const ana = await signUp('ana');
-      const beto = await signUp('beto');
-      const carla = await signUp('carla');
-      const first = await reportUser(ana.id, carla.id);
-      const second = await reportUser(beto.id, carla.id);
-
-      await resolve(admin.token, first.id, {
-        action: 'DISMISS',
-        note: 'No infringe',
-      }).expect(204);
-
-      const row = await prisma.report.findUniqueOrThrow({
-        where: { id: first.id },
-      });
-      expect(row).toMatchObject({
-        status: 'DISMISSED',
-        pendingKey: null,
-        resolvedById: admin.id,
-        resolutionNote: 'No infringe',
-      });
-      expect(row.resolvedAt).not.toBeNull();
-      expect(
-        (await prisma.report.findUniqueOrThrow({ where: { id: second.id } }))
-          .status,
-      ).toBe('PENDING');
-      expect(
-        (await prisma.user.findUniqueOrThrow({ where: { id: carla.id } }))
-          .deactivatedAt,
-      ).toBeNull();
-      expect(await auditOf('report.dismiss', first.id)).toHaveLength(1);
-      const queue = await get(admin.token).expect(200);
-      expect(queue.body.items.map((r: { id: string }) => r.id)).toEqual([
-        second.id,
-      ]);
-    });
-
-    it('desestimar no pide nota y deja resolutionNote vacío', async () => {
-      const admin = await signUpAdmin('admin');
-      const ana = await signUp('ana');
-      const beto = await signUp('beto');
-      const report = await reportUser(ana.id, beto.id);
-
-      await resolve(admin.token, report.id, { action: 'DISMISS' }).expect(204);
-
-      expect(
-        (await prisma.report.findUniqueOrThrow({ where: { id: report.id } }))
-          .resolutionNote,
-      ).toBeNull();
-    });
-
-    it('sancionar a un usuario lo desactiva, cierra sus sesiones y cierra todos los pendientes sobre él', async () => {
-      const admin = await signUpAdmin('admin');
-      const ana = await signUp('ana');
-      const beto = await signUp('beto');
-      const carla = await signUp('carla');
-      const first = await reportUser(ana.id, carla.id);
-      const second = await reportUser(beto.id, carla.id);
-      const unrelated = await reportUser(ana.id, beto.id);
-
-      await resolve(admin.token, first.id, {
-        action: 'DEACTIVATE_TARGET',
-        note: 'Acoso reiterado',
-      }).expect(204);
-
-      expect(
-        (await prisma.user.findUniqueOrThrow({ where: { id: carla.id } }))
-          .deactivatedAt,
-      ).not.toBeNull();
-      await request(server)
-        .get('/api/v1/auth/me')
-        .set('Authorization', `Bearer ${carla.token}`)
-        .expect(401);
-      for (const id of [first.id, second.id]) {
-        const row = await prisma.report.findUniqueOrThrow({ where: { id } });
-        expect(row).toMatchObject({
-          status: 'SANCTIONED',
-          pendingKey: null,
-          resolvedById: admin.id,
-          resolutionNote: 'Acoso reiterado',
-        });
-        expect(await auditOf('report.sanction', id)).toHaveLength(1);
-      }
-      expect(
-        (await prisma.report.findUniqueOrThrow({ where: { id: unrelated.id } }))
-          .status,
-      ).toBe('PENDING');
-      const [entry] = await auditOf('account.deactivate', carla.id);
-      expect(entry).toMatchObject({
-        actorId: admin.id,
-        metadata: { by: 'admin', reason: 'Acoso reiterado' },
-      });
-    });
-
-    it('sancionar una publicación la desactiva (el autor sigue activo) y cierra los demás', async () => {
-      const admin = await signUpAdmin('admin');
-      const ana = await signUp('ana');
-      const beto = await signUp('beto');
-      const carla = await signUp('carla');
-      const postId = await publish(carla.token, 'Spam spam');
-      const first = await reportPost(ana.id, postId, 'Spam spam');
-      const second = await reportPost(beto.id, postId, 'Spam spam');
-
-      await resolve(admin.token, second.id, {
-        action: 'DEACTIVATE_TARGET',
-        note: 'Es spam',
-      }).expect(204);
-
-      expect(
-        (await prisma.post.findUniqueOrThrow({ where: { id: postId } }))
-          .deactivatedAt,
-      ).not.toBeNull();
-      expect(
-        (await prisma.user.findUniqueOrThrow({ where: { id: carla.id } }))
-          .deactivatedAt,
-      ).toBeNull();
-      for (const id of [first.id, second.id]) {
-        expect(
-          (await prisma.report.findUniqueOrThrow({ where: { id } })).status,
-        ).toBe('SANCTIONED');
-      }
-      const [entry] = await auditOf('post.deactivate', postId);
-      expect(entry).toMatchObject({
-        actorId: admin.id,
-        metadata: { by: 'admin', reason: 'Es spam', reportId: second.id },
-      });
-      const feed = await request(server)
-        .get('/api/v1/posts/feed')
-        .set('Authorization', `Bearer ${ana.token}`)
-        .expect(200);
-      expect(feed.body.items).toHaveLength(0);
-      const detail = await get(admin.token, `/${first.id}`).expect(200);
-      expect(detail.body.target.postState).toBe('DEACTIVATED');
-    });
-
-    it('sancionar exige nota de 3 a 500 caracteres y no cambia nada si falta', async () => {
-      const admin = await signUpAdmin('admin');
-      const ana = await signUp('ana');
-      const beto = await signUp('beto');
-      const report = await reportUser(ana.id, beto.id);
-
-      for (const body of [
-        { action: 'DEACTIVATE_TARGET' },
-        { action: 'DEACTIVATE_TARGET', note: 'ab' },
-        { action: 'DEACTIVATE_TARGET', note: '   ' },
-      ]) {
-        const res = await resolve(admin.token, report.id, body).expect(400);
-        expect(res.body.code).toBe('NOTE_REQUIRED');
-      }
-      await resolve(admin.token, report.id, {
-        action: 'DEACTIVATE_TARGET',
-        note: 'x'.repeat(501),
-      }).expect(400);
-      expect(
-        (await prisma.report.findUniqueOrThrow({ where: { id: report.id } }))
-          .status,
-      ).toBe('PENDING');
-      expect(
-        (await prisma.user.findUniqueOrThrow({ where: { id: beto.id } }))
-          .deactivatedAt,
-      ).toBeNull();
-    });
-
-    it('una acción que no existe responde 400', async () => {
-      const admin = await signUpAdmin('admin');
-      const ana = await signUp('ana');
-      const beto = await signUp('beto');
-      const report = await reportUser(ana.id, beto.id);
-
-      await resolve(admin.token, report.id, { action: 'BAN' }).expect(400);
-      await resolve(admin.token, report.id, {}).expect(400);
-    });
-
-    it('uno ya resuelto responde 409 REPORT_ALREADY_RESOLVED y no duplica la bitácora', async () => {
-      const admin = await signUpAdmin('admin');
-      const ana = await signUp('ana');
-      const beto = await signUp('beto');
-      const report = await reportUser(ana.id, beto.id);
-      await resolve(admin.token, report.id, { action: 'DISMISS' }).expect(204);
-
-      const res = await resolve(admin.token, report.id, {
-        action: 'DEACTIVATE_TARGET',
-        note: 'Tarde',
-      }).expect(409);
-
-      expect(res.body.code).toBe('REPORT_ALREADY_RESOLVED');
-      expect(
-        (await prisma.user.findUniqueOrThrow({ where: { id: beto.id } }))
-          .deactivatedAt,
-      ).toBeNull();
-      expect(await auditOf('report.dismiss', report.id)).toHaveLength(1);
-    });
-
-    it('un reporte que no existe responde 404 REPORT_NOT_FOUND', async () => {
-      const admin = await signUpAdmin('admin');
-
-      const res = await resolve(
-        admin.token,
-        '01926f00-0000-7000-8000-0000000000ff',
-        { action: 'DISMISS' },
-      ).expect(404);
-
-      expect(res.body.code).toBe('REPORT_NOT_FOUND');
-    });
-
-    it('no se sanciona a un admin ni a uno mismo, y el reporte sigue pendiente', async () => {
-      const admin = await signUpAdmin('admin');
-      const other = await signUpAdmin('otro');
-      const ana = await signUp('ana');
-      const onOther = await reportUser(ana.id, other.id);
-      const onSelf = await reportUser(ana.id, admin.id);
-      const adminPostId = await publish(other.token, 'Post de un admin');
-      const onPost = await reportPost(ana.id, adminPostId, 'Post de un admin');
-
-      const peer = await resolve(admin.token, onOther.id, {
-        action: 'DEACTIVATE_TARGET',
-        note: 'Probando',
-      }).expect(403);
-      expect(peer.body.code).toBe('CANNOT_SANCTION_ADMIN');
-      const self = await resolve(admin.token, onSelf.id, {
-        action: 'DEACTIVATE_TARGET',
-        note: 'Probando',
-      }).expect(403);
-      expect(self.body.code).toBe('CANNOT_ACT_ON_SELF');
-      const post = await resolve(admin.token, onPost.id, {
-        action: 'DEACTIVATE_TARGET',
-        note: 'Probando',
-      }).expect(403);
-      expect(post.body.code).toBe('CANNOT_SANCTION_ADMIN');
-      expect(await prisma.report.count({ where: { status: 'PENDING' } })).toBe(
-        3,
-      );
-    });
-
-    it('si el usuario ya estaba inactivo, igual cierra el reporte como sancionado sin repetir la baja', async () => {
-      const admin = await signUpAdmin('admin');
-      const ana = await signUp('ana');
-      const beto = await signUp('beto');
-      const report = await reportUser(ana.id, beto.id);
-      await prisma.user.update({
-        where: { id: beto.id },
-        data: { deactivatedAt: new Date() },
-      });
-
-      await resolve(admin.token, report.id, {
-        action: 'DEACTIVATE_TARGET',
-        note: 'Ya estaba',
-      }).expect(204);
-
-      expect(
-        (await prisma.report.findUniqueOrThrow({ where: { id: report.id } }))
-          .status,
-      ).toBe('SANCTIONED');
-      expect(await auditOf('account.deactivate', beto.id)).toHaveLength(0);
-    });
-
-    it('si la publicación fue borrada, igual cierra el reporte como sancionado y no toca otros reportes', async () => {
-      const admin = await signUpAdmin('admin');
-      const ana = await signUp('ana');
-      const beto = await signUp('beto');
-      const carla = await signUp('carla');
-      const postId = await publish(beto.token, 'Lo borraré');
-      const report = await reportPost(ana.id, postId, 'Lo borraré');
-      const unrelated = await reportUser(ana.id, carla.id);
-      await request(server)
-        .delete(`/api/v1/posts/${postId}`)
-        .set('Authorization', `Bearer ${beto.token}`)
-        .expect(204);
-
-      await resolve(admin.token, report.id, {
-        action: 'DEACTIVATE_TARGET',
-        note: 'Ya no existe',
-      }).expect(204);
-
-      expect(
-        (await prisma.report.findUniqueOrThrow({ where: { id: report.id } }))
-          .status,
-      ).toBe('SANCTIONED');
-      // Sin objetivo no hay hermanos: los reportes de otros objetivos siguen.
-      expect(
-        (await prisma.report.findUniqueOrThrow({ where: { id: unrelated.id } }))
-          .status,
-      ).toBe('PENDING');
-      expect(
-        (await prisma.user.findUniqueOrThrow({ where: { id: beto.id } }))
-          .deactivatedAt,
-      ).toBeNull();
-    });
-
-    it('tras resolver se puede volver a reportar lo mismo (pendingKey libre)', async () => {
-      const admin = await signUpAdmin('admin');
-      const ana = await signUp('ana');
-      const beto = await signUp('beto');
-      const report = await reportUser(ana.id, beto.id);
-      await resolve(admin.token, report.id, { action: 'DISMISS' }).expect(204);
-
-      const again = await reportUser(ana.id, beto.id, 'HARASSMENT');
-
-      expect(again.status).toBe('PENDING');
-    });
-
-    it('un estudiante recibe 403 y no cambia nada', async () => {
-      const ana = await signUp('ana');
-      const beto = await signUp('beto');
-      const report = await reportUser(ana.id, beto.id);
-
-      await resolve(ana.token, report.id, { action: 'DISMISS' }).expect(403);
-
-      expect(
-        (await prisma.report.findUniqueOrThrow({ where: { id: report.id } }))
-          .status,
-      ).toBe('PENDING');
-    });
+    }
+    await request(server).get(`${BASE}/activity?${RANGE}`).expect(401);
+    expect(
+      await prisma.auditLog.count({ where: { action: 'report.generate' } }),
+    ).toBe(0);
   });
 });

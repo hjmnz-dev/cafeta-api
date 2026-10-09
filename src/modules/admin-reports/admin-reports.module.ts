@@ -1,23 +1,17 @@
 import { Module } from '@nestjs/common';
 import { AuditModule } from '../../common/audit/audit.module.js';
-import { AccountModule } from '../account/account.module.js';
-import { AdminUsersModule } from '../admin-users/admin-users.module.js';
-import { PostsModule } from '../posts/posts.module.js';
-import { AdminReportResolveService } from './admin-report-resolve.service.js';
+import { ActivityReportBuilder } from './activity-report.builder.js';
 import { AdminReportsController } from './admin-reports.controller.js';
-import { AdminReportsReadService } from './admin-reports-read.service.js';
-import { ReportClosingService } from './report-closing.service.js';
-import { ReportSanctionService } from './report-sanction.service.js';
+import { AdminReportsService } from './admin-reports.service.js';
+import { ModerationReportBuilder } from './moderation-report.builder.js';
 
-// Revisión de reportes de la consola (spec 0009, decisión 33).
 @Module({
-  imports: [AuditModule, AccountModule, AdminUsersModule, PostsModule],
+  imports: [AuditModule],
   controllers: [AdminReportsController],
   providers: [
-    AdminReportsReadService,
-    AdminReportResolveService,
-    ReportClosingService,
-    ReportSanctionService,
+    AdminReportsService,
+    ActivityReportBuilder,
+    ModerationReportBuilder,
   ],
 })
 export class AdminReportsModule {}
