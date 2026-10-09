@@ -10,6 +10,8 @@ import { AccountModule } from './modules/account/account.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { CareersModule } from './modules/careers/careers.module.js';
 import { PostsModule } from './modules/posts/posts.module.js';
+import { MailModule } from './common/mail/mail.module.js';
+import { PasswordResetModule } from './modules/password-reset/password-reset.module.js';
 import { RateLimitModule } from './common/rate-limit/rate-limit.module.js';
 import { UploadsModule } from './modules/uploads/uploads.module.js';
 import { ConversationsModule } from './modules/conversations/conversations.module.js';
@@ -42,6 +44,7 @@ import { AdminUsersModule } from './modules/admin-users/admin-users.module.js';
     CareersModule,
     AuthModule,
     PostsModule,
+    MailModule,
     MonitoringModule,
     MonitoringTestModule,
     ProfilesModule,
@@ -52,6 +55,7 @@ import { AdminUsersModule } from './modules/admin-users/admin-users.module.js';
     SearchModule,
     NotificationsModule,
     AccountModule,
+    PasswordResetModule,
     AdminDashboardModule,
     AdminAuditModule,
     AnnouncementsModule,
