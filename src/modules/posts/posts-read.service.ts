@@ -16,9 +16,16 @@ import {
   feedWhere,
   POST_ORDER,
   POST_VIEW_SELECT,
+  VISIBLE_POST,
 } from './post-queries.js';
 import { MediaUrlService } from '../uploads/media-url.service.js';
 import { toPostPage } from './post-view.mapper.js';
+
+// Lo mínimo de una publicación visible que otro módulo necesita (reportes, decisión 30).
+export type VisiblePostSummary = Pick<
+  Prisma.PostGetPayload<object>,
+  'authorId' | 'type' | 'content'
+>;
 
 // Lecturas de publicaciones (spec 0005). La privacidad y los bloqueos los
 // decide VisibilityService (decisión 15).
@@ -59,6 +66,14 @@ export class PostsReadService {
   ): Promise<PostCountDto> {
     await this.visibility.visibleProfileFacts(viewerId, authorId);
     return this.countByAuthor(authorId);
+  }
+
+  // null si no existe, está archivada o desactivada. No mira la privacidad del autor.
+  visibleSummary(id: string): Promise<VisiblePostSummary | null> {
+    return this.prisma.post.findFirst({
+      where: { id, ...VISIBLE_POST },
+      select: { authorId: true, type: true, content: true },
+    });
   }
 
   async countByAuthor(authorId: string): Promise<PostCountDto> {
