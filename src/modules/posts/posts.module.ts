@@ -19,6 +19,6 @@ import { VisibilityModule } from '../visibility/visibility.module.js';
     PostAuthorService,
     PostModerationService,
   ],
-  exports: [PostsReadService, PostModerationService],
+  exports: [PostsService, PostsReadService, PostModerationService],
 })
 export class PostsModule {}

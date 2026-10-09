@@ -15,7 +15,8 @@ export const POST_ORDER = [
 ] satisfies Prisma.PostOrderByWithRelationInput[];
 
 // "Para ti" (sin careerId): mías, de quienes sigo con ACCEPTED activo y anuncios.
-// Pestaña de carrera: todas las de autores con esa carrera, los siga o no.
+// Pestaña de carrera: todas las de autores con esa carrera, los siga o no, y
+// los anuncios, que son de toda la comunidad (spec 0009, decisión 36).
 // visibleAuthor es el filtro de VisibilityService (decisión 15); los anuncios
 // institucionales no dependen de la privacidad de quien los publica.
 export function feedWhere(
@@ -28,7 +29,13 @@ export function feedWhere(
   };
   if (careerId) {
     return {
-      AND: [VISIBLE_POST, visible, { author: { profile: { careerId } } }],
+      AND: [
+        VISIBLE_POST,
+        visible,
+        {
+          OR: [{ type: 'ANNOUNCEMENT' }, { author: { profile: { careerId } } }],
+        },
+      ],
     };
   }
   return {
