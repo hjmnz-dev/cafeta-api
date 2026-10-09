@@ -33,6 +33,7 @@ import { SessionsService } from './sessions.service.js';
     // Guard global: toda ruta exige sesión salvo las @Public().
     { provide: APP_GUARD, useClass: JwtAuthGuard },
   ],
+  // SessionsService: la recuperación de contraseña cierra las sesiones de la cuenta.
   exports: [AccessTokenService, SessionsService],
 })
 export class AuthModule {}

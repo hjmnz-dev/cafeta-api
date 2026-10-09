@@ -17,8 +17,9 @@ export class AccountController {
   constructor(private readonly selfDeactivation: SelfDeactivationService) {}
 
   // Pide la contraseña, así que lleva el mismo límite de intentos que el login.
+  // Apaga los otros dos: `posts` y `reset` (el de pedir el enlace, spec 0008).
   @UseGuards(ThrottlerGuard)
-  @SkipThrottle({ posts: true, comments: true })
+  @SkipThrottle({ posts: true, reset: true, comments: true })
   @Post('deactivate')
   @HttpCode(204)
   deactivate(

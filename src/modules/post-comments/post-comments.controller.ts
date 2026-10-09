@@ -48,7 +48,7 @@ export class PostCommentsController {
   }
 
   @UseGuards(UserThrottlerGuard)
-  @SkipThrottle({ auth: true, posts: true })
+  @SkipThrottle({ auth: true, posts: true, reset: true })
   @Post()
   create(
     @Param('id', ParseUUIDPipe) id: string,
@@ -61,7 +61,7 @@ export class PostCommentsController {
 
   /** Corrige un comentario propio; queda marcado como editado. */
   @UseGuards(UserThrottlerGuard)
-  @SkipThrottle({ auth: true, posts: true })
+  @SkipThrottle({ auth: true, posts: true, reset: true })
   @Patch(':commentId')
   edit(
     @Param('id', ParseUUIDPipe) id: string,

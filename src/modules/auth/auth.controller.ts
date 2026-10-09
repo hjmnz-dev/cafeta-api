@@ -27,7 +27,7 @@ export class AuthController {
 
   @Public()
   @UseGuards(ThrottlerGuard)
-  @SkipThrottle({ posts: true, comments: true })
+  @SkipThrottle({ posts: true, reset: true, comments: true })
   @Post('register')
   register(
     @Body() dto: RegisterDto,
@@ -38,7 +38,7 @@ export class AuthController {
 
   @Public()
   @UseGuards(ThrottlerGuard)
-  @SkipThrottle({ posts: true, comments: true })
+  @SkipThrottle({ posts: true, reset: true, comments: true })
   @Post('login')
   @HttpCode(200)
   login(

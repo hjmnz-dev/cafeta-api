@@ -10,6 +10,8 @@ import { AccountModule } from './modules/account/account.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { CareersModule } from './modules/careers/careers.module.js';
 import { PostsModule } from './modules/posts/posts.module.js';
+import { MailModule } from './common/mail/mail.module.js';
+import { PasswordResetModule } from './modules/password-reset/password-reset.module.js';
 import { RateLimitModule } from './common/rate-limit/rate-limit.module.js';
 import { UploadsModule } from './modules/uploads/uploads.module.js';
 import { ConversationsModule } from './modules/conversations/conversations.module.js';
@@ -18,10 +20,17 @@ import { MonitoringModule } from './common/monitoring/monitoring.module.js';
 import { MonitoringTestModule } from './modules/monitoring/monitoring.module.js';
 import { FollowsModule } from './modules/follows/follows.module.js';
 import { BlocksModule } from './modules/blocks/blocks.module.js';
+import { ReportsModule } from './modules/reports/reports.module.js';
 import { SearchModule } from './modules/search/search.module.js';
 import { NotificationsModule } from './modules/notifications/notifications.module.js';
 import { PostCommentsModule } from './modules/post-comments/post-comments.module.js';
 import { PostReactionsModule } from './modules/post-reactions/post-reactions.module.js';
+import { AdminDashboardModule } from './modules/admin-dashboard/admin-dashboard.module.js';
+import { AdminReportsModule } from './modules/admin-reports/admin-reports.module.js';
+import { AdminAuditModule } from './modules/admin-audit/admin-audit.module.js';
+import { AnnouncementsModule } from './modules/announcements/announcements.module.js';
+import { ReportReviewModule } from './modules/report-review/report-review.module.js';
+import { AdminUsersModule } from './modules/admin-users/admin-users.module.js';
 
 @Module({
   imports: [
@@ -38,6 +47,7 @@ import { PostReactionsModule } from './modules/post-reactions/post-reactions.mod
     CareersModule,
     AuthModule,
     PostsModule,
+    MailModule,
     MonitoringModule,
     MonitoringTestModule,
     ProfilesModule,
@@ -50,6 +60,14 @@ import { PostReactionsModule } from './modules/post-reactions/post-reactions.mod
     AccountModule,
     PostReactionsModule,
     PostCommentsModule,
+    ReportsModule,
+    PasswordResetModule,
+    AdminDashboardModule,
+    AdminAuditModule,
+    AnnouncementsModule,
+    AdminUsersModule,
+    AdminReportsModule,
+    ReportReviewModule,
   ],
   providers: [{ provide: APP_FILTER, useClass: HttpExceptionFilter }],
 })

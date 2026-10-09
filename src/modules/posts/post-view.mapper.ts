@@ -4,6 +4,12 @@ import type { PostViewRow } from './post-queries.js';
 
 const iso = (date: Date | null): string | null => date?.toISOString() ?? null;
 
+// Desactivada gana sobre archivada: es la baja que el autor no deshace con "Restaurar".
+function stateOf(row: PostViewRow): PostViewDto['state'] {
+  if (row.deactivatedAt) return 'DEACTIVATED';
+  return row.archivedAt ? 'ARCHIVED' : 'ACTIVE';
+}
+
 // Convierte la clave guardada en un enlace de lectura (MediaUrlService.urlFor).
 export type UrlFor = (key: string) => string;
 
@@ -13,6 +19,7 @@ export function toPostView(row: PostViewRow, urlFor: UrlFor): PostViewDto {
   return {
     id: row.id,
     type: row.type,
+    state: stateOf(row),
     content: row.content,
     location: row.location,
     createdAt: row.createdAt.toISOString(),
