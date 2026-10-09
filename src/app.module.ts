@@ -23,6 +23,7 @@ import { BlocksModule } from './modules/blocks/blocks.module.js';
 import { ReportsModule } from './modules/reports/reports.module.js';
 import { SearchModule } from './modules/search/search.module.js';
 import { NotificationsModule } from './modules/notifications/notifications.module.js';
+import { StoriesModule } from './modules/stories/stories.module.js';
 import { PostCommentsModule } from './modules/post-comments/post-comments.module.js';
 import { PostReactionsModule } from './modules/post-reactions/post-reactions.module.js';
 import { SavedPostsModule } from './modules/saved-posts/saved-posts.module.js';
@@ -59,6 +60,7 @@ import { AdminUsersModule } from './modules/admin-users/admin-users.module.js';
     SearchModule,
     NotificationsModule,
     AccountModule,
+    StoriesModule,
     PostReactionsModule,
     PostCommentsModule,
     SavedPostsModule,
