@@ -9,9 +9,11 @@ import type { StoryViewRow } from './story-queries.js';
 export type UrlFor = (key: string) => string;
 
 // Una historia sin medio no se dibuja: la API no las crea, pero la columna
-// admite null y el visor no sabría qué mostrar.
+// admite null y el visor no sabría qué mostrar. El conteo de reacciones es solo
+// del autor (spec 0009, decisión 24): para los demás va null.
 export function toStoryView(
   row: StoryViewRow,
+  viewerId: string,
   urlFor: UrlFor,
 ): StoryViewDto | null {
   if (!row.mediaKey || !row.mediaType || !row.mediaMimeType) return null;
@@ -26,6 +28,9 @@ export function toStoryView(
     createdAt: row.createdAt.toISOString(),
     expiresAt: row.expiresAt.toISOString(),
     editedAt: row.editedAt?.toISOString() ?? null,
+    myReaction: row.reactions[0]?.type ?? null,
+    reactionCount: row.author.id === viewerId ? row._count.reactions : null,
+    commentCount: row._count.comments,
   };
 }
 
@@ -34,11 +39,12 @@ export function toStoryView(
 // para verlas en el orden en que se publicaron.
 export function toStoryTray(
   rows: StoryViewRow[],
+  viewerId: string,
   urlFor: UrlFor,
 ): StoryTrayDto {
   const groups = new Map<string, StoryGroupDto>();
   for (const row of rows) {
-    const story = toStoryView(row, urlFor);
+    const story = toStoryView(row, viewerId, urlFor);
     if (!story) continue;
     const group = groups.get(row.author.id) ?? {
       author: {
