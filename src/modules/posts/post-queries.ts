@@ -87,46 +87,53 @@ export function afterCursor(
   };
 }
 
-// Lo que dibuja la tarjeta. Los conteos solo suman filas activas de usuarios activos.
-export const POST_VIEW_SELECT = {
-  id: true,
-  type: true,
-  content: true,
-  location: true,
-  createdAt: true,
-  editedAt: true,
-  archivedAt: true,
-  deactivatedAt: true,
-  eventStartsAt: true,
-  eventLocation: true,
-  codeSnippet: true,
-  groupName: true,
-  groupSpots: true,
-  media: {
-    select: { storageKey: true, mediaType: true, mimeType: true },
-    orderBy: { position: 'asc' },
-  },
-  author: {
-    select: {
-      id: true,
-      verificationStatus: true,
-      profile: {
-        select: {
-          handle: true,
-          displayName: true,
-          career: { select: { name: true } },
+// Lo que dibuja la tarjeta para quien mira (viewerId). Los conteos solo suman
+// filas activas de usuarios activos; myReaction es mi fila activa, si la hay.
+export const postViewSelect = (viewerId: string) =>
+  ({
+    id: true,
+    type: true,
+    content: true,
+    location: true,
+    createdAt: true,
+    editedAt: true,
+    archivedAt: true,
+    deactivatedAt: true,
+    eventStartsAt: true,
+    eventLocation: true,
+    codeSnippet: true,
+    groupName: true,
+    groupSpots: true,
+    media: {
+      select: { storageKey: true, mediaType: true, mimeType: true },
+      orderBy: { position: 'asc' },
+    },
+    author: {
+      select: {
+        id: true,
+        verificationStatus: true,
+        profile: {
+          select: {
+            handle: true,
+            displayName: true,
+            career: { select: { name: true } },
+          },
         },
       },
     },
-  },
-  _count: {
-    select: {
-      reactions: { where: { deactivatedAt: null, user: ACTIVE } },
-      comments: { where: { deactivatedAt: null, author: ACTIVE } },
+    reactions: {
+      where: { userId: viewerId, deactivatedAt: null },
+      select: { type: true },
+      take: 1,
     },
-  },
-} satisfies Prisma.PostSelect;
+    _count: {
+      select: {
+        reactions: { where: { deactivatedAt: null, user: ACTIVE } },
+        comments: { where: { deactivatedAt: null, author: ACTIVE } },
+      },
+    },
+  }) satisfies Prisma.PostSelect;
 
 export type PostViewRow = Prisma.PostGetPayload<{
-  select: typeof POST_VIEW_SELECT;
+  select: ReturnType<typeof postViewSelect>;
 }>;

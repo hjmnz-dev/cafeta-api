@@ -16,7 +16,7 @@ import type { CreatePostDto } from './dto/create-post.dto.js';
 import type { PostViewDto } from './dto/post-view.dto.js';
 import type { AuditAction } from '../../common/audit/audit-actions.js';
 import type { MediaType, PostType } from '../../generated/prisma/enums.js';
-import { POST_VIEW_SELECT } from './post-queries.js';
+import { postViewSelect } from './post-queries.js';
 import { toPostView } from './post-view.mapper.js';
 
 interface MediaInput {
@@ -100,7 +100,7 @@ export class PostsService {
           location: dto.location ?? null,
           media: { create: media },
         },
-        select: POST_VIEW_SELECT,
+        select: postViewSelect(user.id),
       });
       await this.audit.record(tx, {
         action: kind.action,

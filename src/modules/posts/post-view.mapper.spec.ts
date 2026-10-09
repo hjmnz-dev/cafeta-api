@@ -31,6 +31,7 @@ const row = (overrides: Partial<PostViewRow> = {}): PostViewRow => ({
       career: { name: 'Ingeniería de Software' },
     },
   },
+  reactions: [],
   _count: { reactions: 12, comments: 3 },
   ...overrides,
 });
@@ -66,7 +67,14 @@ describe('toPostView', () => {
       },
       reactionCount: 12,
       commentCount: 3,
+      myReaction: null,
     });
+  });
+
+  it('myReaction lleva el tipo de mi reacción activa', () => {
+    const view = toPostView(row({ reactions: [{ type: 'FIRE' }] }), urlFor);
+
+    expect(view.myReaction).toBe('FIRE');
   });
 
   it('las fechas opcionales vacías quedan en null', () => {
