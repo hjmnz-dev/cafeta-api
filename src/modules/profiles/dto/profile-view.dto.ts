@@ -34,6 +34,11 @@ export class ProfileViewDto {
     example: 'Ingeniería de Software',
   })
   careerName: string | null;
+  @ApiProperty({ type: String, nullable: true })
+  careerId: string | null;
+  /** Enlace de lectura de la foto (vence en una hora como máximo), o null si no tiene. */
+  @ApiProperty({ type: String, nullable: true })
+  avatarUrl: string | null;
   /** true si la cuenta está verificada. */
   verified: boolean;
   @ApiProperty({ enum: ProfileVisibility, enumName: 'ProfileVisibility' })
@@ -49,6 +54,8 @@ export class ProfileViewDto {
   canFollow: boolean;
   @ApiProperty({ type: String, nullable: true })
   bio: string | null;
+  @ApiProperty({ type: String, nullable: true })
+  location: string | null;
   @ApiProperty({ type: [ProfileTagDto] })
   tags: ProfileTagDto[];
   counts: ProfileCountsDto;
