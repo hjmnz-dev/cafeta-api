@@ -23,6 +23,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { AdminDashboardModule } from './modules/admin-dashboard/admin-dashboard.module.js';
 import { AdminReportsModule } from './modules/admin-reports/admin-reports.module.js';
 import { AdminAuditModule } from './modules/admin-audit/admin-audit.module.js';
+import { AnnouncementsModule } from './modules/announcements/announcements.module.js';
 import { ReportReviewModule } from './modules/report-review/report-review.module.js';
 import { AdminUsersModule } from './modules/admin-users/admin-users.module.js';
 
@@ -53,8 +54,9 @@ import { AdminUsersModule } from './modules/admin-users/admin-users.module.js';
     AccountModule,
     AdminDashboardModule,
     AdminAuditModule,
-    AdminReportsModule,
+    AnnouncementsModule,
     AdminUsersModule,
+    AdminReportsModule,
     ReportReviewModule,
   ],
   providers: [{ provide: APP_FILTER, useClass: HttpExceptionFilter }],
