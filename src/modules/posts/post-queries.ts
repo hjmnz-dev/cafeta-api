@@ -88,7 +88,8 @@ export function afterCursor(
 }
 
 // Lo que dibuja la tarjeta para quien mira (viewerId). Los conteos solo suman
-// filas activas de usuarios activos; myReaction es mi fila activa, si la hay.
+// filas activas de usuarios activos; myReaction y savedByMe son mis filas
+// activas, si las hay.
 export const postViewSelect = (viewerId: string) =>
   ({
     id: true,
@@ -124,6 +125,11 @@ export const postViewSelect = (viewerId: string) =>
     reactions: {
       where: { userId: viewerId, deactivatedAt: null },
       select: { type: true },
+      take: 1,
+    },
+    savedBy: {
+      where: { userId: viewerId, deactivatedAt: null },
+      select: { id: true },
       take: 1,
     },
     _count: {

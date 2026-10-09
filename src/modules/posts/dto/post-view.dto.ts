@@ -66,4 +66,6 @@ export class PostViewDto {
   /** Mi reacción activa a la publicación; null si no he reaccionado. */
   @ApiProperty({ enum: ReactionType, enumName: 'ReactionType', nullable: true })
   myReaction: ReactionType | null;
+  /** true si guardé la publicación (spec 0009, decisión 19). */
+  savedByMe: boolean;
 }

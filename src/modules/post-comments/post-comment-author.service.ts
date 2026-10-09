@@ -17,7 +17,7 @@ import type {
 import { toCommentView } from '../../common/comments/comment-view.mapper.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { MediaUrlService } from '../uploads/media-url.service.js';
-import { PostAccessService } from './post-access.service.js';
+import { PostAccessService } from '../posts/post-access.service.js';
 
 // Editar y desactivar mis comentarios (spec 0009, decisión 21). Solo el autor
 // del comentario puede; el autor de la publicación no quita comentarios ajenos.

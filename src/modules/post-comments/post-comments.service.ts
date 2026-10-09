@@ -26,7 +26,7 @@ import { NotificationsService } from '../notifications/notifications.service.js'
 import type { PageQueryDto } from '../posts/dto/page-query.dto.js';
 import { MediaUrlService } from '../uploads/media-url.service.js';
 import { VisibilityService } from '../visibility/visibility.service.js';
-import { PostAccessService } from './post-access.service.js';
+import { PostAccessService } from '../posts/post-access.service.js';
 
 // Leer y escribir comentarios de una publicación (spec 0009, decisión 21).
 // Editar y desactivar los propios vive en PostCommentAuthorService.

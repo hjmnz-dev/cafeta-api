@@ -44,6 +44,7 @@ export function toPostView(row: PostViewRow, urlFor: UrlFor): PostViewDto {
     reactionCount: row._count.reactions,
     commentCount: row._count.comments,
     myReaction: row.reactions[0]?.type ?? null,
+    savedByMe: row.savedBy.length > 0,
   };
 }
 
