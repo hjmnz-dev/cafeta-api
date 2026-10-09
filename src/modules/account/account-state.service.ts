@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { Prisma } from '../../generated/prisma/client.js';
 import type { ActorContext } from '../../common/actor/actor-context.js';
 import { AuditService } from '../../common/audit/audit.service.js';
 import { stateChangeError } from '../../common/soft-delete/soft-delete.js';
@@ -29,23 +30,34 @@ export class AccountStateService {
     actor: ActorContext,
     origin: DeactivationOrigin,
   ): Promise<void> {
+    await this.prisma.$transaction((tx) =>
+      this.deactivateIn(tx, userId, actor, origin),
+    );
+  }
+
+  // Lo mismo dentro de una transacción ajena: la revisión de reportes (33)
+  // cierra el reporte y desactiva la cuenta o ninguno de los dos.
+  async deactivateIn(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    actor: ActorContext,
+    origin: DeactivationOrigin,
+  ): Promise<void> {
     const now = new Date();
-    await this.prisma.$transaction(async (tx) => {
-      if (!(await this.users.deactivate(tx, userId, now))) {
-        throw stateChangeError(true, 'deactivate');
-      }
-      await this.sessions.revokeAllForUser(tx, userId, now);
-      await this.audit.record(tx, {
-        action: 'account.deactivate',
-        entityType: 'user',
-        entityId: userId,
-        actor,
-        succeeded: true,
-        metadata: {
-          by: origin.by,
-          ...(origin.reason ? { reason: origin.reason } : {}),
-        },
-      });
+    if (!(await this.users.deactivate(tx, userId, now))) {
+      throw stateChangeError(true, 'deactivate');
+    }
+    await this.sessions.revokeAllForUser(tx, userId, now);
+    await this.audit.record(tx, {
+      action: 'account.deactivate',
+      entityType: 'user',
+      entityId: userId,
+      actor,
+      succeeded: true,
+      metadata: {
+        by: origin.by,
+        ...(origin.reason ? { reason: origin.reason } : {}),
+      },
     });
   }
 
