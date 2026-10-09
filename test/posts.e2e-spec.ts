@@ -270,7 +270,7 @@ describe('Publicaciones (e2e)', () => {
     expect(bad.body.code).toBe('INVALID_CURSOR');
   });
 
-  it('AC-6: la pestaña de carrera muestra a los de esa carrera, sin seguirlos y sin anuncios', async () => {
+  it('AC-6: la pestaña de carrera muestra a los de esa carrera, sin seguirlos, y suma los anuncios (spec 0009, decisión 36)', async () => {
     const a = await signUp('usuario_a', medicinaId);
     const sw = await signUp('usuario_sw', softwareId);
     const med = await signUp('usuario_med', medicinaId);
@@ -288,7 +288,7 @@ describe('Publicaciones (e2e)', () => {
     await seedPost(admin.id, 'anuncio', { type: 'ANNOUNCEMENT' });
 
     const res = await get(a, `/posts/feed?careerId=${softwareId}`).expect(200);
-    expect(contents(res.body)).toEqual(['de software']);
+    expect(contents(res.body).sort()).toEqual(['anuncio', 'de software']);
   });
 
   it('AC-3 y AC-14: mis publicaciones y su conteo; las de un perfil limitado dan 403 y access.denied', async () => {
