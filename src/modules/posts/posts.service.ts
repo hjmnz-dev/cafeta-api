@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
 import type {
   ActorContext,
   AuthenticatedUser,
@@ -10,7 +14,8 @@ import { MediaStorage } from '../uploads/media-storage.js';
 import { MediaUrlService } from '../uploads/media-url.service.js';
 import type { CreatePostDto } from './dto/create-post.dto.js';
 import type { PostViewDto } from './dto/post-view.dto.js';
-import type { MediaType } from '../../generated/prisma/enums.js';
+import type { AuditAction } from '../../common/audit/audit-actions.js';
+import type { MediaType, PostType } from '../../generated/prisma/enums.js';
 import { postViewSelect } from './post-queries.js';
 import { toPostView } from './post-view.mapper.js';
 
@@ -35,6 +40,21 @@ const mediaNotFound = () =>
     code: 'MEDIA_NOT_FOUND',
   });
 
+// Lo que cambia entre publicar como estudiante y como admin (spec 0009,
+// decisión 36): el tipo y el código de auditoría los fija el servidor.
+export interface PublishKind {
+  type: PostType;
+  action: AuditAction;
+}
+
+const STUDENT_POST: PublishKind = { type: 'TEXT', action: 'post.create' };
+
+const announcementNotAllowed = () =>
+  new ForbiddenException({
+    message: 'Los anuncios solo se publican desde la consola de administración',
+    code: 'ANNOUNCEMENT_NOT_ALLOWED',
+  });
+
 // Escritura de publicaciones (spec 0005). Los adjuntos (spec 0008, decisión 13)
 // son claves de POST /uploads que el mismo autor subió.
 @Injectable()
@@ -47,10 +67,23 @@ export class PostsService {
   ) {}
 
   // El autor sale del token y el tipo es siempre TEXT; el cuerpo no los trae.
+  // Pedir `type: ANNOUNCEMENT` aquí se rechaza, también a un admin.
   async create(
     dto: CreatePostDto,
     user: AuthenticatedUser,
     actor: ActorContext,
+  ): Promise<PostViewDto> {
+    if (dto.type !== undefined) throw announcementNotAllowed();
+    return this.publish(dto, user, actor, STUDENT_POST);
+  }
+
+  // Publica con adjuntos y audita en la misma transacción; lo usan las
+  // publicaciones y los anuncios, cada uno con su tipo.
+  async publish(
+    dto: CreatePostDto,
+    user: AuthenticatedUser,
+    actor: ActorContext,
+    kind: PublishKind,
   ): Promise<PostViewDto> {
     const content = dto.content?.trim() ?? '';
     const mediaKeys = dto.mediaKeys ?? [];
@@ -62,7 +95,7 @@ export class PostsService {
       const post = await tx.post.create({
         data: {
           authorId: user.id,
-          type: 'TEXT',
+          type: kind.type,
           content: content || null,
           location: dto.location ?? null,
           media: { create: media },
@@ -70,7 +103,7 @@ export class PostsService {
         select: postViewSelect(user.id),
       });
       await this.audit.record(tx, {
-        action: 'post.create',
+        action: kind.action,
         entityType: 'post',
         entityId: post.id,
         actor,

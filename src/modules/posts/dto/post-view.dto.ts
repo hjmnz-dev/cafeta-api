@@ -30,6 +30,9 @@ export class PostMediaDto {
   mimeType: string;
 }
 
+export const POST_STATES = ['ACTIVE', 'ARCHIVED', 'DEACTIVATED'] as const;
+export type PostState = (typeof POST_STATES)[number];
+
 export class PostViewDto {
   id: string;
   @ApiProperty({ enum: PostType, enumName: 'PostType' })
@@ -38,6 +41,9 @@ export class PostViewDto {
   content: string | null;
   @ApiProperty({ type: String, nullable: true, example: 'Biblioteca' })
   location: string | null;
+  /** ACTIVE se ve en el feed y el perfil; ARCHIVED y DEACTIVATED solo las ve su autor. */
+  @ApiProperty({ enum: POST_STATES, enumName: 'PostState' })
+  state: PostState;
   /** Fecha de creación en ISO 8601. */
   createdAt: string;
   @ApiProperty({ type: String, nullable: true })
@@ -60,4 +66,6 @@ export class PostViewDto {
   /** Mi reacción activa a la publicación; null si no he reaccionado. */
   @ApiProperty({ enum: ReactionType, enumName: 'ReactionType', nullable: true })
   myReaction: ReactionType | null;
+  /** true si guardé la publicación (spec 0009, decisión 19). */
+  savedByMe: boolean;
 }

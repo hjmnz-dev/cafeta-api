@@ -249,4 +249,115 @@ describe('Gestionar mis publicaciones (e2e)', () => {
     expect(audit).toMatchObject({ entityId: post.id, actorId: ana.id });
     await call(ana, 'delete', `/posts/${post.id}`).expect(404);
   });
+
+  it('HU21 E1: archivar la quita del feed y del perfil, la lleva a mis archivadas y audita post.archive', async () => {
+    const ana = await signUp('ana');
+    const beto = await signUp('beto');
+    const post = await publish(ana, { content: 'Para archivar' });
+    await prisma.follow.create({
+      data: { followerId: beto.id, followingId: ana.id, status: 'ACCEPTED' },
+    });
+    expect(await feedIds(beto)).toContain(post.id);
+
+    await call(ana, 'post', `/posts/${post.id}/archive`).expect(204);
+
+    expect(await feedIds(ana)).not.toContain(post.id);
+    expect(await feedIds(beto)).not.toContain(post.id);
+    const perfil = await call(beto, 'get', `/users/${ana.id}/posts`).expect(
+      200,
+    );
+    expect(perfil.body.items).toHaveLength(0);
+    const conteo = await call(
+      beto,
+      'get',
+      `/users/${ana.id}/posts/count`,
+    ).expect(200);
+    expect(conteo.body.count).toBe(0);
+    const archivadas = await call(ana, 'get', '/posts/archived').expect(200);
+    expect(archivadas.body.items).toMatchObject([
+      { id: post.id, state: 'ARCHIVED', content: 'Para archivar' },
+    ]);
+    expect(await audits('post.archive')).toHaveLength(1);
+
+    const otra = await call(ana, 'post', `/posts/${post.id}/archive`).expect(
+      409,
+    );
+    expect(otra.body.code).toBe('ALREADY_ARCHIVED');
+  });
+
+  it('HU21 E2: restaurar la devuelve tal cual, con sus reacciones, y audita post.restore', async () => {
+    const ana = await signUp('ana');
+    const beto = await signUp('beto');
+    const post = await publish(ana, { content: 'Va y vuelve' });
+    await prisma.postReaction.create({
+      data: { postId: post.id, userId: beto.id, type: 'CLAP' },
+    });
+    await call(ana, 'post', `/posts/${post.id}/archive`).expect(204);
+
+    await call(ana, 'post', `/posts/${post.id}/restore`).expect(204);
+
+    const feed = (await call(ana, 'get', '/posts/feed').expect(200)).body.items;
+    expect(feed).toMatchObject([
+      {
+        id: post.id,
+        content: 'Va y vuelve',
+        state: 'ACTIVE',
+        reactionCount: 1,
+      },
+    ]);
+    expect(
+      (await call(ana, 'get', '/posts/archived').expect(200)).body.items,
+    ).toHaveLength(0);
+    expect(await audits('post.restore')).toHaveLength(1);
+    const otra = await call(ana, 'post', `/posts/${post.id}/restore`).expect(
+      409,
+    );
+    expect(otra.body.code).toBe('NOT_ARCHIVED');
+  });
+
+  it('mis archivadas incluyen las desactivadas, marcadas, y nadie ve las de otra persona', async () => {
+    const ana = await signUp('ana');
+    const beto = await signUp('beto');
+    const a = await publish(ana, { content: 'Archivada' });
+    const b = await publish(ana, { content: 'Desactivada' });
+    await publish(ana, { content: 'Normal' });
+    await call(ana, 'post', `/posts/${a.id}/archive`).expect(204);
+    await call(ana, 'post', `/posts/${b.id}/deactivate`).expect(204);
+
+    const mias = (await call(ana, 'get', '/posts/archived').expect(200)).body
+      .items as { id: string; state: string }[];
+    expect(mias.map((p) => [p.id, p.state]).sort()).toEqual(
+      [
+        [a.id, 'ARCHIVED'],
+        [b.id, 'DEACTIVATED'],
+      ].sort(),
+    );
+    const deBeto = await call(beto, 'get', '/posts/archived').expect(200);
+    expect(deBeto.body.items).toHaveLength(0);
+  });
+
+  it('archivar o restaurar la de otra persona da 403 NOT_POST_AUTHOR; una desactivada, 409 POST_INACTIVE', async () => {
+    const ana = await signUp('ana');
+    const beto = await signUp('beto');
+    const post = await publish(ana, { content: 'De Ana' });
+
+    for (const action of ['archive', 'restore']) {
+      const res = await call(
+        beto,
+        'post',
+        `/posts/${post.id}/${action}`,
+      ).expect(403);
+      expect(res.body.code).toBe('NOT_POST_AUTHOR');
+    }
+    await call(ana, 'post', `/posts/${post.id}/deactivate`).expect(204);
+    const res = await call(ana, 'post', `/posts/${post.id}/archive`).expect(
+      409,
+    );
+    expect(res.body.code).toBe('POST_INACTIVE');
+    await call(
+      ana,
+      'post',
+      '/posts/01926f00-0000-7000-8000-000000000999/archive',
+    ).expect(404);
+  });
 });
