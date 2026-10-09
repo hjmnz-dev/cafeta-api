@@ -24,7 +24,9 @@ import { CreatePostDto } from './dto/create-post.dto.js';
 import { FeedQueryDto } from './dto/feed-query.dto.js';
 import { PostPageDto } from './dto/post-page.dto.js';
 import { PostViewDto } from './dto/post-view.dto.js';
+import { PageQueryDto } from './dto/page-query.dto.js';
 import { UpdatePostDto } from './dto/update-post.dto.js';
+import { PostArchiveService } from './post-archive.service.js';
 import { PostAuthorService } from './post-author.service.js';
 import { PostsReadService } from './posts-read.service.js';
 import { PostsService } from './posts.service.js';
@@ -37,10 +39,11 @@ export class PostsController {
     private readonly posts: PostsService,
     private readonly reads: PostsReadService,
     private readonly author: PostAuthorService,
+    private readonly archiveService: PostArchiveService,
   ) {}
 
   @UseGuards(UserThrottlerGuard)
-  @SkipThrottle({ auth: true })
+  @SkipThrottle({ auth: true, reset: true })
   @Post()
   create(
     @Body() dto: CreatePostDto,
@@ -48,6 +51,34 @@ export class PostsController {
     @Actor() actor: ActorContext,
   ): Promise<PostViewDto> {
     return this.posts.create(dto, user, actor);
+  }
+
+  @Get('archived')
+  archived(
+    @Query() query: PageQueryDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<PostPageDto> {
+    return this.reads.hidden(user.id, query);
+  }
+
+  @Post(':id/archive')
+  @HttpCode(204)
+  archive(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Actor() actor: ActorContext,
+  ): Promise<void> {
+    return this.archiveService.archive(id, user, actor);
+  }
+
+  @Post(':id/restore')
+  @HttpCode(204)
+  restore(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Actor() actor: ActorContext,
+  ): Promise<void> {
+    return this.archiveService.restore(id, user, actor);
   }
 
   @Get('feed')
