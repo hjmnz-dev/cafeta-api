@@ -22,6 +22,7 @@ import { SearchModule } from './modules/search/search.module.js';
 import { NotificationsModule } from './modules/notifications/notifications.module.js';
 import { AdminDashboardModule } from './modules/admin-dashboard/admin-dashboard.module.js';
 import { AdminReportsModule } from './modules/admin-reports/admin-reports.module.js';
+import { AdminAuditModule } from './modules/admin-audit/admin-audit.module.js';
 import { AdminUsersModule } from './modules/admin-users/admin-users.module.js';
 
 @Module({
@@ -50,6 +51,7 @@ import { AdminUsersModule } from './modules/admin-users/admin-users.module.js';
     NotificationsModule,
     AccountModule,
     AdminDashboardModule,
+    AdminAuditModule,
     AdminUsersModule,
     AdminReportsModule,
   ],
