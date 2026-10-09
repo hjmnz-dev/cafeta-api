@@ -14,6 +14,7 @@ import {
   afterCursor,
   authorWhere,
   feedWhere,
+  hiddenWhere,
   POST_ORDER,
   POST_VIEW_SELECT,
   VISIBLE_POST,
@@ -40,6 +41,11 @@ export class PostsReadService {
   feed(userId: string, query: FeedQueryDto): Promise<PostPageDto> {
     const visibleAuthor = this.visibility.contentAuthorWhere(userId);
     return this.page(feedWhere(userId, visibleAuthor, query.careerId), query);
+  }
+
+  // Mis archivadas y desactivadas (HU21, HU23): solo las veo yo.
+  hidden(userId: string, query: PageQueryDto): Promise<PostPageDto> {
+    return this.page(hiddenWhere(userId), query);
   }
 
   // Publicaciones de un perfil: 404 si quien mira no ve el perfil, 403 si lo ve

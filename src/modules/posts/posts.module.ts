@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AuditModule } from '../../common/audit/audit.module.js';
 import { UploadsModule } from '../uploads/uploads.module.js';
+import { PostArchiveService } from './post-archive.service.js';
 import { PostAuthorService } from './post-author.service.js';
 import { PostModerationService } from './post-moderation.service.js';
 import { PostsReadService } from './posts-read.service.js';
@@ -17,6 +18,7 @@ import { VisibilityModule } from '../visibility/visibility.module.js';
     PostsService,
     PostsReadService,
     PostAuthorService,
+    PostArchiveService,
     PostModerationService,
   ],
   exports: [PostsService, PostsReadService, PostModerationService],

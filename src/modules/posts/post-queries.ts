@@ -63,6 +63,16 @@ export function feedWhere(
   };
 }
 
+// Mis publicaciones fuera de la vista pública: archivadas (HU21) o desactivadas
+// (HU23). Solo del autor, y solo mientras su cuenta siga activa.
+export function hiddenWhere(authorId: string): Prisma.PostWhereInput {
+  return {
+    authorId,
+    author: ACTIVE,
+    OR: [{ archivedAt: { not: null } }, { deactivatedAt: { not: null } }],
+  };
+}
+
 export function authorWhere(authorId: string): Prisma.PostWhereInput {
   return { AND: [VISIBLE_POST, { authorId }] };
 }
@@ -85,6 +95,8 @@ export const POST_VIEW_SELECT = {
   location: true,
   createdAt: true,
   editedAt: true,
+  archivedAt: true,
+  deactivatedAt: true,
   eventStartsAt: true,
   eventLocation: true,
   codeSnippet: true,
