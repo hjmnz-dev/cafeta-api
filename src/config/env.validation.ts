@@ -20,6 +20,10 @@ export enum NodeEnv {
 
 const POSTGRES_URL = /^postgres(ql)?:\/\/.+/;
 
+// Una variable vacía cuenta como ausente (App Service y .env a veces la dejan en blanco).
+const emptyAsUndefined = ({ value }: { value: unknown }) =>
+  typeof value === 'string' && value.trim() === '' ? undefined : value;
+
 // Variables que la API necesita para arrancar (spec 0001, "Configuración requerida").
 export class EnvironmentVariables {
   @IsEnum(NodeEnv, {
@@ -94,15 +98,57 @@ export class EnvironmentVariables {
   // DSN del proyecto cafeta-api en Sentry (spec 0007). Opcional: sin él no se
   // envía nada. Vacío cuenta como ausente. instrument.ts la lee de process.env
   // porque corre antes que ConfigModule; aquí solo sirve para el aviso de arranque.
-  @Transform(({ value }: { value: unknown }) =>
-    typeof value === 'string' && value.trim() === '' ? undefined : value,
-  )
+  @Transform(emptyAsUndefined)
   @IsOptional()
   @IsUrl(
     { require_protocol: true },
     { message: 'SENTRY_DSN debe ser una URL https:// de Sentry' },
   )
   SENTRY_DSN?: string;
+
+  // Pedidos de enlace para recuperar la contraseña por hora por IP (spec 0008, decisión 10).
+  @IsInt()
+  @Min(1)
+  PASSWORD_RESET_RATE_LIMIT: number = 3;
+
+  // Correo SMTP (Gmail con contraseña de aplicación). Las cuatro primeras juntas
+  // activan el envío real; sin ellas el correo solo se registra en el log.
+  @Transform(emptyAsUndefined)
+  @IsOptional()
+  @IsString()
+  SMTP_HOST?: string;
+
+  @Transform(emptyAsUndefined)
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(65535)
+  SMTP_PORT: number = 587;
+
+  @Transform(emptyAsUndefined)
+  @IsOptional()
+  @IsString()
+  SMTP_USER?: string;
+
+  @Transform(emptyAsUndefined)
+  @IsOptional()
+  @IsString()
+  SMTP_PASS?: string;
+
+  // Remitente, por ejemplo: Cafeta <cafeta.intec@gmail.com>
+  @Transform(emptyAsUndefined)
+  @IsOptional()
+  @IsString()
+  MAIL_FROM?: string;
+
+  // Dirección pública de la web, para el enlace del correo. Sin ella se usa WEB_ORIGIN.
+  @Transform(emptyAsUndefined)
+  @IsOptional()
+  @IsUrl(
+    { require_tld: false, require_protocol: true },
+    { message: 'WEB_URL debe ser una URL con protocolo (http:// o https://)' },
+  )
+  WEB_URL?: string;
 }
 
 // Si falta una variable o es inválida, la API no arranca y dice cuál.

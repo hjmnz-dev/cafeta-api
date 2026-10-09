@@ -65,4 +65,17 @@ export class SessionsService {
       data: { revokedAt: now },
     });
   }
+
+  // Cierra todas las sesiones de un usuario (al desactivar su cuenta). Va en la
+  // transacción de quien la llama, para que no quede una sin la otra.
+  async revokeAllForUser(
+    tx: SessionWriter,
+    userId: string,
+    now: Date,
+  ): Promise<void> {
+    await tx.session.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: now },
+    });
+  }
 }

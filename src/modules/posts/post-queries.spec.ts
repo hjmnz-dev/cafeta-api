@@ -59,13 +59,18 @@ describe('feedWhere', () => {
     });
   });
 
-  it('AC-6: la pestaña de carrera filtra por la carrera del autor sin mirar seguimientos', () => {
+  it('AC-6: la pestaña de carrera filtra por la carrera del autor sin mirar seguimientos, y suma los anuncios', () => {
     const where = feedWhere(ME, VISIBLE_AUTHOR, CAREER);
     expect(where).toEqual({
       AND: [
         VISIBLE_POST,
         VISIBLE,
-        { author: { profile: { careerId: CAREER } } },
+        {
+          OR: [
+            { type: 'ANNOUNCEMENT' },
+            { author: { profile: { careerId: CAREER } } },
+          ],
+        },
       ],
     });
     expect(JSON.stringify(where)).not.toContain('followers');

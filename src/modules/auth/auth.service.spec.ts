@@ -33,6 +33,7 @@ const currentUser: CurrentUser = {
   email: 'cgomez@est.intec.edu.do',
   role: 'STUDENT',
   verificationStatus: 'PENDING',
+  createdAt: '2026-10-02T14:00:00.000Z',
   profile: {
     handle: 'cgomez_intec',
     displayName: 'Carlos Gómez',

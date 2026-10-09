@@ -7,6 +7,7 @@ export const AUDIT_ACTIONS = [
   'account.reactivate',
   'account.verify',
   'account.reject_verification',
+  'account.password_reset',
   'profile.update',
   'privacy.update',
   'report.generate',

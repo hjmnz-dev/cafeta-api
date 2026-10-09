@@ -46,6 +46,15 @@ function notBlockedWith(viewerId: string): Prisma.UserWhereInput {
   };
 }
 
+// La misma regla de canSeeProfile como filtro de Prisma sobre usuarios: quien
+// mira se ve a sí mismo, y a los demás si están activos y sin bloqueo. La
+// privacidad no cuenta: un perfil PRIVATE sí se encuentra (se ve limitado).
+export function profileVisibleTo(viewerId: string): Prisma.UserWhereInput {
+  return {
+    OR: [{ id: viewerId }, { AND: [ACTIVE, notBlockedWith(viewerId)] }],
+  };
+}
+
 // La misma regla de canSeeContent como filtro de Prisma sobre el autor, para las
 // listas (feed, perfil, historias, búsqueda, comentarios).
 export function contentVisibleTo(viewerId: string): Prisma.UserWhereInput {

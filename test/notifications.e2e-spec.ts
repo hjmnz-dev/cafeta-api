@@ -300,8 +300,8 @@ describe('Notificaciones (e2e)', () => {
       data: { blockerId: beto.id, blockedId: ana.id },
     });
 
-    // La conversación se crea directo en la base para no depender de lo que
-    // la 29 decida sobre abrir conversaciones con un bloqueo.
+    // La conversación se crea directo en la base; con el bloqueo (29), enviar
+    // en ella responde 404 y por eso no se genera ningún aviso.
     const conversation = await prisma.conversation.create({
       data:
         ana.id < beto.id
@@ -310,7 +310,7 @@ describe('Notificaciones (e2e)', () => {
     });
     await as(ana)
       .post(`/conversations/${conversation.id}/messages`, { content: 'Hola' })
-      .expect(201);
+      .expect(404);
     expect(await typesOf(beto)).toEqual(['MESSAGE']);
 
     await prisma.user.update({

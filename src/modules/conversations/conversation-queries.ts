@@ -11,15 +11,29 @@ export function orderedPair(
   return { userAId, userBId };
 }
 
-// Conversaciones donde participo y la otra persona sigue activa.
-// TODO(29): ocultar también las conversaciones con un bloqueo entre los dos.
+// Conversaciones donde participo, la otra persona sigue activa y no hay un
+// bloqueo mutuo activo (decisión 29).
 export function participantWhere(
   userId: string,
 ): Prisma.ConversationWhereInput {
+  const notBlockedWithViewer = {
+    blocksMade: { none: { blockedId: userId, deactivatedAt: null } },
+    blocksReceived: { none: { blockerId: userId, deactivatedAt: null } },
+  };
   return {
     OR: [
-      { userAId: userId, userB: ACTIVE },
-      { userBId: userId, userA: ACTIVE },
+      {
+        userAId: userId,
+        userB: {
+          AND: [ACTIVE, notBlockedWithViewer],
+        },
+      },
+      {
+        userBId: userId,
+        userA: {
+          AND: [ACTIVE, notBlockedWithViewer],
+        },
+      },
     ],
   };
 }

@@ -24,6 +24,8 @@ export interface CurrentUser {
   email: string;
   role: Role;
   verificationStatus: VerificationStatus;
+  /** Fecha de registro en ISO 8601 ("miembro desde" en Configuración). */
+  createdAt: string;
   profile: { handle: string; displayName: string; careerId: string | null };
 }
 
@@ -39,6 +41,7 @@ const CURRENT_USER_SELECT = {
   email: true,
   role: true,
   verificationStatus: true,
+  createdAt: true,
   profile: { select: { handle: true, displayName: true, careerId: true } },
 } as const;
 
@@ -174,6 +177,7 @@ function toCurrentUser(user: {
   email: string;
   role: Role;
   verificationStatus: VerificationStatus;
+  createdAt: Date;
   profile: {
     handle: string;
     displayName: string;
@@ -188,6 +192,7 @@ function toCurrentUser(user: {
     email: user.email,
     role: user.role,
     verificationStatus: user.verificationStatus,
+    createdAt: user.createdAt.toISOString(),
     profile: user.profile,
   };
 }
