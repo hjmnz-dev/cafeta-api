@@ -34,14 +34,14 @@ import { ResolveReportDto } from './dto/resolve-report.dto.js';
 
 @ApiTags('admin')
 @ApiBearerAuth()
-@Controller('admin/reports')
+@Controller('admin/community-reports')
 @Roles('ADMIN')
 @UseGuards(RolesGuard)
 @ApiForbiddenResponse({
   description:
     'No es admin (FORBIDDEN), o intenta sancionarse a sí mismo (CANNOT_ACT_ON_SELF) o a otro admin (CANNOT_SANCTION_ADMIN)',
 })
-export class AdminReportsController {
+export class ReportReviewController {
   constructor(
     private readonly reads: AdminReportsReadService,
     private readonly resolver: AdminReportResolveService,

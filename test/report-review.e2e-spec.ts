@@ -10,7 +10,7 @@ import { resetDb } from './support/reset-db.js';
 
 // Revisión de reportes de la consola (spec 0009, decisión 33) contra PostgreSQL real.
 const PASSWORD = 'clave-segura-2026';
-const BASE = '/api/v1/admin/reports';
+const BASE = '/api/v1/admin/community-reports';
 
 describe('Revisión de reportes del admin (e2e)', () => {
   let app: NestExpressApplication;
@@ -127,7 +127,7 @@ describe('Revisión de reportes del admin (e2e)', () => {
   const auditOf = (action: string, entityId: string) =>
     prisma.auditLog.findMany({ where: { action, entityId } });
 
-  describe('GET /admin/reports', () => {
+  describe('GET /admin/community-reports', () => {
     it('lista los pendientes, el más antiguo primero, con reportante y objetivo', async () => {
       const admin = await signUpAdmin('admin');
       const ana = await signUp('ana');
@@ -271,7 +271,7 @@ describe('Revisión de reportes del admin (e2e)', () => {
     });
   });
 
-  describe('GET /admin/reports/:id', () => {
+  describe('GET /admin/community-reports/:id', () => {
     it('trae el detalle con los otros pendientes sobre el mismo objetivo', async () => {
       const admin = await signUpAdmin('admin');
       const ana = await signUp('ana');
@@ -329,7 +329,7 @@ describe('Revisión de reportes del admin (e2e)', () => {
     });
   });
 
-  describe('POST /admin/reports/:id/resolve', () => {
+  describe('POST /admin/community-reports/:id/resolve', () => {
     it('desestimar cierra solo ese reporte, no toca la cuenta y deja la auditoría', async () => {
       const admin = await signUpAdmin('admin');
       const ana = await signUp('ana');
