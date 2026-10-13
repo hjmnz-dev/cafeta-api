@@ -2,11 +2,18 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 
-export const RESOLVE_ACTIONS = ['DISMISS', 'DEACTIVATE_TARGET'] as const;
+export const RESOLVE_ACTIONS = [
+  'DISMISS',
+  'DEACTIVATE_TARGET',
+  'DEACTIVATE_AUTHOR',
+] as const;
 export type ResolveAction = (typeof RESOLVE_ACTIONS)[number];
 
 export class ResolveReportDto {
-  /** DISMISS cierra solo este reporte; DEACTIVATE_TARGET sanciona al objetivo. */
+  /**
+   * DISMISS cierra solo este reporte; DEACTIVATE_TARGET sanciona al objetivo;
+   * DEACTIVATE_AUTHOR (solo reportes de publicación) desactiva la cuenta del autor.
+   */
   @IsIn(RESOLVE_ACTIONS)
   action: ResolveAction;
 

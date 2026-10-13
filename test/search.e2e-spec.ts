@@ -164,6 +164,49 @@ describe('Búsqueda y descubrimiento (e2e)', () => {
     expect(await handles(ana, 'tester')).toEqual(['eli']);
   });
 
+  it('bug 1015: cada persona trae el seguimiento de quien busca y si se le puede seguir', async () => {
+    const ana = await signUp('ana', 'Ana', 'Tester');
+    const beto = await signUp('beto', 'Beto', 'Tester');
+    const carla = await signUp('carla', 'Carla', 'Tester');
+    const dani = await signUp('dani', 'Dani', 'Tester');
+    const eli = await signUp('eli', 'Eli', 'Tester');
+    await prisma.follow.create({
+      data: { followerId: ana.id, followingId: beto.id, status: 'ACCEPTED' },
+    });
+    await prisma.follow.create({
+      data: { followerId: ana.id, followingId: carla.id, status: 'PENDING' },
+    });
+    // Un seguimiento dado de baja ya no cuenta.
+    await prisma.follow.create({
+      data: {
+        followerId: ana.id,
+        followingId: dani.id,
+        status: 'ACCEPTED',
+        deactivatedAt: new Date(),
+      },
+    });
+    await prisma.profile.update({
+      where: { userId: eli.id },
+      data: { visibility: 'PRIVATE' },
+    });
+
+    const res = await get(ana, '/search/users?q=tester').expect(200);
+    const byHandle = Object.fromEntries(
+      res.body.items.map(
+        (u: { handle: string; followStatus: string; canFollow: boolean }) => [
+          u.handle,
+          { followStatus: u.followStatus, canFollow: u.canFollow },
+        ],
+      ),
+    );
+    expect(byHandle).toEqual({
+      beto: { followStatus: 'ACCEPTED', canFollow: true },
+      carla: { followStatus: 'PENDING', canFollow: true },
+      dani: { followStatus: 'NONE', canFollow: true },
+      eli: { followStatus: 'NONE', canFollow: false },
+    });
+  });
+
   it('AC-5: pagina por cursor sin repetir ni saltar, y rechaza un cursor ajeno', async () => {
     const ana = await signUp('ana');
     for (const n of ['uno', 'dos', 'tres', 'cuatro', 'cinco']) {

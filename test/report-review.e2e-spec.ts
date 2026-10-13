@@ -466,6 +466,69 @@ describe('Revisión de reportes del admin (e2e)', () => {
       expect(detail.body.target.postState).toBe('DEACTIVATED');
     });
 
+    it('bug 1023: desde una publicación desactiva la cuenta del autor y cierra lo pendiente de ambos', async () => {
+      const admin = await signUpAdmin('admin');
+      const ana = await signUp('ana');
+      const beto = await signUp('beto');
+      const carla = await signUp('carla');
+      const postId = await publish(carla.token, 'Me hago pasar por otra');
+      const otherPostId = await publish(carla.token, 'Otra publicación');
+      const onPost = await reportPost(ana.id, postId, 'Me hago pasar por otra');
+      const againstUser = await reportUser(beto.id, carla.id);
+      const otherPost = await reportPost(beto.id, otherPostId, 'Otra');
+
+      await resolve(admin.token, onPost.id, {
+        action: 'DEACTIVATE_AUTHOR',
+        note: 'Suplantación comprobada',
+      }).expect(204);
+
+      expect(
+        (await prisma.user.findUniqueOrThrow({ where: { id: carla.id } }))
+          .deactivatedAt,
+      ).not.toBeNull();
+      for (const id of [onPost.id, againstUser.id]) {
+        expect(
+          (await prisma.report.findUniqueOrThrow({ where: { id } })).status,
+        ).toBe('SANCTIONED');
+      }
+      // Un reporte sobre otra publicación del autor queda para revisarse aparte.
+      expect(
+        (await prisma.report.findUniqueOrThrow({ where: { id: otherPost.id } }))
+          .status,
+      ).toBe('PENDING');
+      const [entry] = await auditOf('account.deactivate', carla.id);
+      expect(entry).toMatchObject({
+        actorId: admin.id,
+        metadata: { by: 'admin', reason: 'Suplantación comprobada' },
+      });
+      await request(server)
+        .get('/api/v1/auth/me')
+        .set('Authorization', `Bearer ${carla.token}`)
+        .expect(401);
+    });
+
+    it('bug 1023: en un reporte de usuario DEACTIVATE_AUTHOR responde 400 y no cambia nada', async () => {
+      const admin = await signUpAdmin('admin');
+      const ana = await signUp('ana');
+      const carla = await signUp('carla');
+      const report = await reportUser(ana.id, carla.id);
+
+      const res = await resolve(admin.token, report.id, {
+        action: 'DEACTIVATE_AUTHOR',
+        note: 'Suplantación',
+      }).expect(400);
+
+      expect(res.body.code).toBe('NOT_A_POST_REPORT');
+      expect(
+        (await prisma.report.findUniqueOrThrow({ where: { id: report.id } }))
+          .status,
+      ).toBe('PENDING');
+      expect(
+        (await prisma.user.findUniqueOrThrow({ where: { id: carla.id } }))
+          .deactivatedAt,
+      ).toBeNull();
+    });
+
     it('sancionar exige nota de 3 a 500 caracteres y no cambia nada si falta', async () => {
       const admin = await signUpAdmin('admin');
       const ana = await signUp('ana');

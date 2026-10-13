@@ -54,4 +54,20 @@ export class ReportSanctionService {
       });
     }
   }
+
+  // Desde el reporte de una publicación, desactivar la cuenta de su autor (bug
+  // 1023). Igual que arriba: si ya estaba inactiva no cambia nada.
+  async applyToAuthor(
+    tx: Prisma.TransactionClient,
+    authorId: string,
+    author: { deactivatedAt: Date | null },
+    reason: string,
+    actor: ActorContext,
+  ): Promise<void> {
+    if (author.deactivatedAt !== null) return;
+    await this.accounts.deactivateIn(tx, authorId, actor, {
+      by: 'admin',
+      reason,
+    });
+  }
 }

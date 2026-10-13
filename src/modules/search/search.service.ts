@@ -1,10 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
-import {
-  toFollowUserView,
-  USER_CARD_SELECT,
-} from '../follows/follow-queries.js';
-import type { FollowUserPageDto } from '../follows/dto/follow-view.dto.js';
 import type { PageQueryDto } from '../posts/dto/page-query.dto.js';
 import type { PostPageDto } from '../posts/dto/post-page.dto.js';
 import { postViewSelect, VISIBLE_POST } from '../posts/post-queries.js';
@@ -13,6 +8,8 @@ import { MediaUrlService } from '../uploads/media-url.service.js';
 import { VisibilityService } from '../visibility/visibility.service.js';
 import { inOrderOf, windowAfter } from './search-paging.js';
 import { queryTerms } from './search-terms.js';
+import type { SearchUserPageDto } from './dto/search-user-view.dto.js';
+import { searchUserSelect, toSearchUserView } from './search-user-view.js';
 import { SearchRepository } from './search.repository.js';
 
 // Buscar y explorar (spec 0008, decisión 28). El repositorio encuentra y ordena
@@ -32,7 +29,7 @@ export class SearchService {
     viewerId: string,
     q: string,
     { cursor, limit }: PageQueryDto,
-  ): Promise<FollowUserPageDto> {
+  ): Promise<SearchUserPageDto> {
     const candidates = await this.repository.userIds(queryTerms(q));
     const visible = await this.prisma.user.findMany({
       where: {
@@ -48,11 +45,11 @@ export class SearchService {
     if (!window.ok) throw invalidCursor();
     const rows = await this.prisma.user.findMany({
       where: { id: { in: window.ids } },
-      select: USER_CARD_SELECT,
+      select: searchUserSelect(viewerId),
     });
     return {
       items: inOrderOf(window.ids, rows).map((row) =>
-        toFollowUserView(row, (key) => this.urls.urlFor(key)),
+        toSearchUserView(row, (key) => this.urls.urlFor(key)),
       ),
       nextCursor: window.hasMore ? (window.ids.at(-1) ?? null) : null,
     };
