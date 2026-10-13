@@ -2,10 +2,10 @@ import { Controller, Get, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { AuthenticatedUser } from '../../common/actor/actor-context.js';
 import { CurrentUser } from '../../common/actor/current-user.decorator.js';
-import { FollowUserPageDto } from '../follows/dto/follow-view.dto.js';
 import { PageQueryDto } from '../posts/dto/page-query.dto.js';
 import { PostPageDto } from '../posts/dto/post-page.dto.js';
 import { SearchQueryDto } from './dto/search-query.dto.js';
+import { SearchUserPageDto } from './dto/search-user-view.dto.js';
 import { SearchService } from './search.service.js';
 
 @ApiTags('search')
@@ -19,7 +19,7 @@ export class SearchController {
   users(
     @Query() query: SearchQueryDto,
     @CurrentUser() user: AuthenticatedUser,
-  ): Promise<FollowUserPageDto> {
+  ): Promise<SearchUserPageDto> {
     return this.search.users(user.id, query.q, query);
   }
 

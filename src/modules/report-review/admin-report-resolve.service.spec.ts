@@ -40,7 +40,10 @@ function build(report: object | null) {
     close: vi.fn().mockResolvedValue(undefined),
     closeSiblings: vi.fn().mockResolvedValue(undefined),
   };
-  const sanctions = { apply: vi.fn().mockResolvedValue(undefined) };
+  const sanctions = {
+    apply: vi.fn().mockResolvedValue(undefined),
+    applyToAuthor: vi.fn().mockResolvedValue(undefined),
+  };
   const service = new AdminReportResolveService(
     prisma as unknown as PrismaService,
     targets as unknown as AdminTargetService,
@@ -188,5 +191,81 @@ describe('AdminReportResolveService.resolve', () => {
       ),
     ).rejects.toThrow('CANNOT_SANCTION_ADMIN');
     expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  describe('desactivar al autor desde una publicación (bug 1023)', () => {
+    const postReport = {
+      ...userReport,
+      targetUserId: null,
+      targetPostId: 'p1',
+      targetUser: null,
+      targetPost: {
+        deactivatedAt: null,
+        authorId: AUTHOR_ID,
+        author: { deactivatedAt: null },
+      },
+    };
+
+    it('cierra el reporte, desactiva al autor y cierra los pendientes de la publicación y del autor', async () => {
+      const { service, closing, sanctions, targets } = build(postReport);
+      const order: string[] = [];
+      closing.close.mockImplementation(async () => void order.push('close'));
+      sanctions.applyToAuthor.mockImplementation(
+        async () => void order.push('author'),
+      );
+      closing.closeSiblings.mockImplementation(
+        async (_tx: unknown, target: { targetUserId: string | null }) =>
+          void order.push(target.targetUserId ? 'user' : 'post'),
+      );
+
+      await service.resolve(
+        REPORT_ID,
+        { action: 'DEACTIVATE_AUTHOR', note: 'Suplantación' },
+        actor,
+      );
+
+      expect(targets.check).toHaveBeenCalledWith(AUTHOR_ID, ADMIN_ID, {
+        sanction: true,
+      });
+      expect(sanctions.applyToAuthor).toHaveBeenCalledWith(
+        TX,
+        AUTHOR_ID,
+        { deactivatedAt: null },
+        'Suplantación',
+        actor,
+      );
+      expect(sanctions.apply).not.toHaveBeenCalled();
+      expect(order).toEqual(['close', 'author', 'post', 'user']);
+    });
+
+    it('en un reporte de usuario responde 400 NOT_A_POST_REPORT sin tocar nada', async () => {
+      const { service, prisma } = build(userReport);
+
+      await expect(
+        service.resolve(
+          REPORT_ID,
+          { action: 'DEACTIVATE_AUTHOR', note: 'Suplantación' },
+          actor,
+        ),
+      ).rejects.toMatchObject({
+        status: 400,
+        response: { code: 'NOT_A_POST_REPORT' },
+      });
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('si el autor es admin no abre la transacción', async () => {
+      const { service, targets, prisma } = build(postReport);
+      targets.check.mockRejectedValue(new Error('CANNOT_SANCTION_ADMIN'));
+
+      await expect(
+        service.resolve(
+          REPORT_ID,
+          { action: 'DEACTIVATE_AUTHOR', note: 'Suplantación' },
+          actor,
+        ),
+      ).rejects.toThrow('CANNOT_SANCTION_ADMIN');
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
   });
 });
