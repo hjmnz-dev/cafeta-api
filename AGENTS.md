@@ -31,27 +31,35 @@ npm run db:seed          # carreras y admin; con SEED_DEMO=true también la demo
 
 ## Key files
 
-| File                                          | Owns                                                                                                                            |
-| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `src/main.ts`                                 | Arranque: `trust proxy`, puerto, llama a `configureApp()`                                                                       |
-| `src/app.setup.ts`                            | `configureApp()`: prefijo, `ValidationPipe`, helmet, CORS, Swagger, filtro de errores; lo comparten `main.ts` y las e2e         |
-| `src/config/env.validation.ts`                | Variables de entorno validadas al arrancar; si falta una, la API no inicia                                                      |
-| `src/common/filters/http-exception.filter.ts` | Forma única de error `{ statusCode, message, code }`                                                                            |
-| `src/common/decorators/public.decorator.ts`   | `@Public()` para rutas sin token                                                                                                |
-| `src/prisma/prisma.service.ts`                | Cliente de Prisma global, pool de 5 conexiones, sin conectar al arrancar                                                        |
-| `prisma/schema.prisma`, `prisma.config.ts`    | Esquema y configuración de Prisma 7                                                                                             |
-| `prisma/seed.ts`                              | Semilla: carreras y admin siempre; la demo del prototipo solo con `SEED_DEMO=true`                                              |
-| `src/modules/auth/jwt-auth.guard.ts`          | Guard JWT global (`APP_GUARD`): exige Bearer con su sesión vigente en `sessions` y cuenta activa, salvo en `@Public()`          |
-| `src/common/actor/`                           | `@Actor()` (quién hace la petición, para auditar) y `@CurrentUser()` (el usuario que dejó el guard)                             |
-| `src/common/audit/`                           | `AuditService` y el catálogo `AUDIT_ACTIONS`; `AdminReasonDto` para las sanciones de admin                                      |
-| `src/common/soft-delete/soft-delete.ts`       | Filtros `ACTIVE` y `ACTIVE_AUTHOR`, y `stateChangeArgs` para desactivar y reactivar sin carreras                                |
-| `src/common/rate-limit/`                      | `RateLimitModule` (límites con nombre: `auth` por IP, `posts` por usuario) y `UserThrottlerGuard`, que cuenta por `req.user.id` |
-| `src/modules/posts/post-queries.ts`           | `VISIBLE_POST`, `POST_ORDER` y los filtros del feed; toda lectura de publicaciones parte de aquí                                |
-| `test/support/reset-db.ts`                    | `APP_TABLES`: las tablas que las e2e vacían con TRUNCATE antes de cada prueba                                                   |
-| `infra/README.md`                             | Runbook de producción: Supabase, Azure, GitHub, primer despliegue, semilla, rotar secretos, costo                               |
-| `infra/provision.sh`, `infra/github-env.sh`   | Crean los recursos de Azure y cargan los ambientes `production` de los tres repos; se corren en Cloud Shell                     |
-| `.github/workflows/ci.yml`, `seed.yml`        | CI en cada push; job `deploy` solo en `main` (migrar, subir con OIDC, prueba de humo); `seed.yml` siembra producción a mano     |
-| `src/health/app-version.ts`                   | Lee `version.txt` (el commit que escribe el job `deploy`) para el campo `version` de `/health`; sin archivo, `dev`              |
+| File                                                | Owns                                                                                                                               |
+| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main.ts`                                       | Arranque: `trust proxy`, puerto, llama a `configureApp()`                                                                          |
+| `src/app.setup.ts`                                  | `configureApp()`: prefijo, `ValidationPipe`, helmet, CORS, Swagger, filtro de errores; lo comparten `main.ts` y las e2e            |
+| `src/config/env.validation.ts`                      | Variables de entorno validadas al arrancar; si falta una, la API no inicia                                                         |
+| `src/common/filters/http-exception.filter.ts`       | Forma única de error `{ statusCode, message, code }`                                                                               |
+| `src/common/decorators/public.decorator.ts`         | `@Public()` para rutas sin token                                                                                                   |
+| `src/prisma/prisma.service.ts`                      | Cliente de Prisma global, pool de 5 conexiones, sin conectar al arrancar                                                           |
+| `prisma/schema.prisma`, `prisma.config.ts`          | Esquema y configuración de Prisma 7                                                                                                |
+| `prisma/seed.ts`                                    | Semilla: carreras y admin siempre; la demo del prototipo solo con `SEED_DEMO=true`                                                 |
+| `src/modules/auth/jwt-auth.guard.ts`                | Guard JWT global (`APP_GUARD`): exige Bearer con su sesión vigente en `sessions` y cuenta activa, salvo en `@Public()`             |
+| `src/common/actor/`                                 | `@Actor()` (quién hace la petición, para auditar) y `@CurrentUser()` (el usuario que dejó el guard)                                |
+| `src/common/audit/`                                 | `AuditService` y el catálogo `AUDIT_ACTIONS`; `AdminReasonDto` para las sanciones de admin                                         |
+| `src/common/soft-delete/soft-delete.ts`             | Filtros `ACTIVE` y `ACTIVE_AUTHOR`, y `stateChangeArgs` para desactivar y reactivar sin carreras                                   |
+| `src/common/rate-limit/`                            | `RateLimitModule` (cuatro límites con nombre: `auth` por IP; `posts`, `comments` y `reset` por usuario) y `UserThrottlerGuard`     |
+| `src/modules/auth/roles.guard.ts`                   | `RolesGuard` y `@Roles('ADMIN')` (en `src/common/decorators/`): toda ruta de `/admin/*` lo exige                                   |
+| `src/modules/notifications/`                        | `NotificationsService.notify()`: único punto que crea notificaciones; se llama después de la transacción y nunca lanza             |
+| `src/modules/posts/post-access.service.ts`          | `PostAccessService`: si quien mira puede ver una publicación; lo comparten comentarios, reacciones, guardados y reportes           |
+| `src/common/comments/`                              | Reglas, consulta y vista de comentarios que comparten `post-comments` y `story-comments`                                           |
+| `src/common/mail/`                                  | `Mailer` con `SmtpMailer` (si están `SMTP_HOST`, `_USER`, `_PASS` y `MAIL_FROM`) o `LogMailer` (solo log); lo usa `password-reset` |
+| `src/common/monitoring/`, `src/modules/monitoring/` | Sentry: filtro de errores, `scrub` de datos personales, tope de eventos y `POST /monitoring/test-error` (spec 0007)                |
+| `src/modules/realtime/`                             | Gateway de Socket.io (token en el handshake) y `RealtimePublisher`; los módulos emiten eventos, no tocan el socket                 |
+| `src/modules/uploads/`                              | Subida a Azure Blob (Azurite en local) con validación de formato; devuelve la URL firmada que usan perfiles, posts e historias     |
+| `src/modules/posts/post-queries.ts`                 | `VISIBLE_POST`, `POST_ORDER` y los filtros del feed; toda lectura de publicaciones parte de aquí                                   |
+| `test/support/reset-db.ts`                          | `APP_TABLES`: las tablas que las e2e vacían con TRUNCATE antes de cada prueba                                                      |
+| `infra/README.md`                                   | Runbook de producción: Supabase, Azure, GitHub, primer despliegue, semilla, rotar secretos, costo                                  |
+| `infra/provision.sh`, `infra/github-env.sh`         | Crean los recursos de Azure y cargan los ambientes `production` de los tres repos; se corren en Cloud Shell                        |
+| `.github/workflows/ci.yml`, `seed.yml`              | CI en cada push; job `deploy` solo en `main` (migrar, subir con OIDC, prueba de humo); `seed.yml` siembra producción a mano        |
+| `src/health/app-version.ts`                         | Lee `version.txt` (el commit que escribe el job `deploy`) para el campo `version` de `/health`; sin archivo, `dev`                 |
 
 ## Conventions
 
@@ -68,6 +76,7 @@ npm run db:seed          # carreras y admin; con SEED_DEMO=true también la demo
 - Las entidades con baja lógica nunca se borran de verdad (un trigger lo impide): se desactivan, y toda lectura filtra con `ACTIVE` (más `ACTIVE_AUTHOR` si tienen autor).
 - Toda acción auditable se registra con `AuditService.record(tx, …)` dentro de la misma transacción del cambio; los códigos de `AUDIT_ACTIONS` se pueden sumar, nunca renombrar.
 - `passwordHash` se omite en toda consulta por defecto (`omit` global en `PrismaService`); solo `UsersService.findByEmailWithHash` lo pide.
+- Las rutas de consola viven bajo `/admin/*`, llevan `@Roles('ADMIN')` y cada sanción exige una nota (`AdminReasonDto`); revisión de reportes de la comunidad en `admin/community-reports` (módulo `report-review`), anuncios en `announcements`, bitácora en `admin-audit`.
 - Una tabla nueva se suma a `APP_TABLES` en `test/support/reset-db.ts`, o las e2e se contaminan entre sí.
 - En producción, el job `deploy` aplica las migraciones con `prisma migrate deploy` antes de subir el código; nunca se migra Supabase a mano. Una migración aplicada se corrige con otra nueva, no con `git revert`.
 - Cuando un cambio toca el contrato, se fusiona y despliega primero la API y después la web.
@@ -85,6 +94,8 @@ npm run db:seed          # carreras y admin; con SEED_DEMO=true también la demo
 - Las e2e corren una a la vez (`fileParallelism: false`) porque comparten `cafeta_test`.
 - `.env.test` sube `AUTH_RATE_LIMIT` a 1000 para que las e2e no choquen con el límite; para probar el 429, fija la variable antes de importar `AppModule` (ver `test/auth-rate-limit.e2e-spec.ts`).
 - `.env.test` también sube `POST_RATE_LIMIT` (publicaciones por minuto por usuario, 10 por defecto) a 1000; su 429 se prueba igual, en `test/posts-rate-limit.e2e-spec.ts`.
+- `.env.test` también sube `COMMENT_RATE_LIMIT` (comentarios por minuto por usuario, 20 por defecto) a 1000. `PASSWORD_RESET_RATE_LIMIT` (3 por defecto) queda como está en `.env.test`.
+- Si falta alguna de `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS` o `MAIL_FROM`, la API no envía correos (`LogMailer` solo los registra). En producción van `SMTP_*`, `MAIL_FROM` y `WEB_URL` (para el enlace de recuperar contraseña) como app settings de la Web App.
 - Los guards corren antes del `ValidationPipe`: un límite de peticiones también cuenta las que después se rechazan con 400.
 - Una prueba unitaria que usa `plainToInstance` con `@Type` o conversión implícita necesita `import 'reflect-metadata'` al inicio; en la app lo carga Nest.
 - Hoy las rutas fuera de `/api/v1` responden el 404 en HTML de Express, no por el filtro (hallazgo abierto en `docs/reviews/2026-09-25-cafeta-api-main.md`).
@@ -111,5 +122,7 @@ Declined: skills para `@nestjs/jwt`, `@nestjs/throttler` y `bcryptjs` (los cubre
 - 0004 Registro, inicio y cierre de sesión (`docs/specs/0004-registro-inicio-cierre-sesion/index.md`)
 - 0005 Publicar y ver el feed (`docs/specs/0005-publicar-ver-feed/index.md`)
 - 0006 Despliegue de los tres repos (`docs/specs/0006-despliegue-tres-repos/index.md`)
+- 0007 Monitoreo de errores (`docs/specs/0007-monitoreo-de-errores/index.md`)
+- 0008 y 0009 Decisiones de las funcionalidades 5 a 36, por tandas (`docs/specs/0008-decisiones-aceleradas/index.md`, `docs/specs/0009-segunda-tanda-decisiones/index.md`)
 
 _Drafted by /audit from the repo, worth a quick human pass. Edit freely: once a line stops matching this draft, later runs treat it as curated and will flag rather than overwrite it._
