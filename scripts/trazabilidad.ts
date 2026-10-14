@@ -105,6 +105,14 @@ export function buildReport(scenarios: Scenario[], tests: FoundTest[]): Report {
 
 const cell = (text: string): string => text.replace(/\|/g, '\\|');
 
+// Diferencias entre el documento de HU y el sistema que quien lee la matriz
+// debe conocer. Se dejan aquí, junto al generador, para que no se pierdan.
+const NOTES = [
+  'En `project-context.md` los escenarios de HU24 y HU25 describen anuncios institucionales y guardar publicaciones, aunque los títulos de esas HU digan comentar y reaccionar. Las pruebas siguen los escenarios; los comentarios y las reacciones a publicaciones están en HU28 a HU31.',
+  'HU40 E1 y HU42 E1 hablan de publicaciones e historias. Hoy explorar y buscar contenido devuelven publicaciones; las historias no entran en esas dos listas.',
+  'El historial de HU38 E1 lo entrega la API del más reciente al más antiguo; la pantalla lo muestra en orden cronológico (prueba HU38 E1 de la web).',
+];
+
 export function renderMarkdown(report: Report, date: string): string {
   const { scenarios, tests, missing, unknown } = report;
   const done = scenarios.length - missing.length;
@@ -121,6 +129,7 @@ export function renderMarkdown(report: Report, date: string): string {
     '| HU | Historia | Escenario | Prueba | Repo | Archivo |',
     '|---|---|---|---|---|---|',
   ];
+  lines.splice(6, 0, '**Notas:**', '', ...NOTES.map((note) => `- ${note}`), '');
   for (const s of scenarios) {
     const found = tests.filter((t) => t.hu === s.hu && t.scenario === s.id);
     const scenario = `${s.id}: ${cell(s.title)}`;
