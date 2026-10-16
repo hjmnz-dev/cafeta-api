@@ -16,6 +16,7 @@ const APP_TABLES = [
   'post_comments',
   'saved_posts',
   'stories',
+  'story_views',
   'story_reactions',
   'story_comments',
   'conversations',

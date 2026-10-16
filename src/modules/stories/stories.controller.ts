@@ -21,6 +21,7 @@ import { StoryTrayDto, StoryViewDto } from './dto/story-view.dto.js';
 import { StoriesReadService } from './stories-read.service.js';
 import { StoriesService } from './stories.service.js';
 import { StoryEditsService } from './story-edits.service.js';
+import { StoryViewsService } from './story-views.service.js';
 
 @ApiTags('stories')
 @ApiBearerAuth()
@@ -30,6 +31,7 @@ export class StoriesController {
     private readonly stories: StoriesService,
     private readonly edits: StoryEditsService,
     private readonly reads: StoriesReadService,
+    private readonly views: StoryViewsService,
   ) {}
 
   @Post()
@@ -45,6 +47,16 @@ export class StoriesController {
   @Get()
   tray(@CurrentUser() user: AuthenticatedUser): Promise<StoryTrayDto> {
     return this.reads.tray(user.id);
+  }
+
+  /** La marca como vista por mí (bug 1068); repetir no cambia nada. */
+  @Post(':id/view')
+  @HttpCode(204)
+  markViewed(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<void> {
+    return this.views.markViewed(id, user.id);
   }
 
   /** Corrige el texto de una historia propia vigente; la vigencia no cambia. */

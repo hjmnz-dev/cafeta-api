@@ -29,6 +29,8 @@ export class StoryViewDto {
   reactionCount: number | null;
   /** Comentarios activos de usuarios activos. */
   commentCount: number;
+  /** true si quien pregunta ya la abrió (el anillo pasa a gris, bug 1068). */
+  seenByMe: boolean;
 }
 
 export class StoryAuthorDto {
