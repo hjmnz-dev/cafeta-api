@@ -63,6 +63,23 @@ export class NotificationsReadService {
     }
   }
 
+  // Bug 1049: leer una conversación también da por leídos sus avisos de
+  // mensaje; si no, la campana seguiría marcando lo que ya se leyó.
+  async markConversationRead(
+    userId: string,
+    conversationId: string,
+  ): Promise<void> {
+    await this.prisma.notification.updateMany({
+      where: {
+        AND: [
+          inboxWhere(userId),
+          { type: 'MESSAGE', conversationId, readAt: null },
+        ],
+      },
+      data: { readAt: new Date() },
+    });
+  }
+
   async markAllRead(userId: string): Promise<void> {
     await this.prisma.notification.updateMany({
       where: { AND: [inboxWhere(userId), { readAt: null }] },

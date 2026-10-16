@@ -17,6 +17,9 @@ export class PostAuthorDto {
     example: 'Ingeniería de Software',
   })
   careerName: string | null;
+  /** Enlace de lectura de su foto de perfil; null si no tiene. */
+  @ApiProperty({ type: String, nullable: true })
+  avatarUrl: string | null;
   /** true si la cuenta está verificada. */
   verified: boolean;
 }

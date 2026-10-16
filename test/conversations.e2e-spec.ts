@@ -294,6 +294,32 @@ describe('Conversaciones (e2e)', () => {
     expect(after.body.items[1].unread).toBe(true);
   });
 
+  it('bug 1049: leer la conversación da por leídos sus avisos de mensaje, y solo los de ella', async () => {
+    const ana = await signUp('ana');
+    const beto = await signUp('beto');
+    const carla = await signUp('carla');
+    const withBeto = await open(beto, ana);
+    const withCarla = await open(carla, ana);
+    await send(beto, withBeto, 'Hola Ana').expect(201);
+    await send(beto, withBeto, '¿Vienes?').expect(201);
+    await send(carla, withCarla, 'Hola').expect(201);
+    const unread = async () =>
+      (await as(ana).get('/notifications/unread-count').expect(200)).body
+        .count as number;
+    expect(await unread()).toBe(3);
+
+    await as(ana).post(`/conversations/${withBeto}/read`).expect(204);
+
+    expect(await unread()).toBe(1);
+    const list = await as(ana).get('/notifications').expect(200);
+    expect(
+      list.body.items.map(
+        (n: { conversationId: string; read: boolean }) =>
+          `${n.conversationId === withBeto ? 'beto' : 'carla'}:${n.read}`,
+      ),
+    ).toEqual(['carla:false', 'beto:true', 'beto:true']);
+  });
+
   it('AC-5 (HU33 E2): sin conversaciones con mensajes la bandeja viene vacía', async () => {
     const ana = await signUp('ana');
     const beto = await signUp('beto');

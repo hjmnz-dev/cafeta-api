@@ -122,6 +122,7 @@ export const postViewSelect = (viewerId: string) =>
           select: {
             handle: true,
             displayName: true,
+            avatarKey: true,
             career: { select: { name: true } },
           },
         },

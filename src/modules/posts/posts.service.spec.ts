@@ -49,6 +49,7 @@ const created: PostViewRow = {
     profile: {
       handle: 'cgomez_intec',
       displayName: 'Carlos Gómez',
+      avatarKey: null,
       career: { name: 'Ingeniería de Software' },
     },
   },

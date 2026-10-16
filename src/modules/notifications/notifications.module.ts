@@ -16,6 +16,6 @@ import { NotificationsService } from './notifications.service.js';
     NotificationsReadService,
     NotificationPreferencesService,
   ],
-  exports: [NotificationsService],
+  exports: [NotificationsService, NotificationsReadService],
 })
 export class NotificationsModule {}

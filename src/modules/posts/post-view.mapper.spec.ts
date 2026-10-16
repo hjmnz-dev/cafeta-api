@@ -28,6 +28,7 @@ const row = (overrides: Partial<PostViewRow> = {}): PostViewRow => ({
     profile: {
       handle: 'cgomez_intec',
       displayName: 'Carlos Gómez',
+      avatarKey: null,
       career: { name: 'Ingeniería de Software' },
     },
   },
@@ -64,6 +65,7 @@ describe('toPostView', () => {
         handle: 'cgomez_intec',
         displayName: 'Carlos Gómez',
         careerName: 'Ingeniería de Software',
+        avatarUrl: null,
         verified: true,
       },
       reactionCount: 12,
@@ -112,12 +114,37 @@ describe('toPostView', () => {
       row({
         author: {
           ...base.author,
-          profile: { handle: 'cafeta', displayName: 'Cafeta', career: null },
+          profile: {
+            handle: 'cafeta',
+            displayName: 'Cafeta',
+            avatarKey: null,
+            career: null,
+          },
         },
       }),
       urlFor,
     );
     expect(view.author.careerName).toBeNull();
+  });
+
+  it('bug 1043: el autor lleva el enlace de su foto de perfil', () => {
+    const base = row();
+    const view = toPostView(
+      row({
+        author: {
+          ...base.author,
+          profile: {
+            handle: 'cgomez_intec',
+            displayName: 'Carlos Gómez',
+            avatarKey: 'avatars/carlos.jpg',
+            career: null,
+          },
+        },
+      }),
+      urlFor,
+    );
+
+    expect(view.author.avatarUrl).toBe(urlFor('avatars/carlos.jpg'));
   });
 
   it('un autor sin perfil no rompe la vista', () => {
@@ -133,9 +160,10 @@ describe('toPostView', () => {
     });
   });
 
-  it('no expone nada de users fuera del id y el verificado', () => {
+  it('no expone nada de users fuera del id, la foto y el verificado', () => {
     const view = toPostView(row(), urlFor);
     expect(Object.keys(view.author).sort()).toEqual([
+      'avatarUrl',
       'careerName',
       'displayName',
       'handle',
