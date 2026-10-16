@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { ACTIVE } from '../../common/soft-delete/soft-delete.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { MediaUrlService } from '../uploads/media-url.service.js';
 import type { PageQueryDto } from '../posts/dto/page-query.dto.js';
 import {
   afterConversation,
@@ -42,7 +43,13 @@ const invalidCursor = () =>
 // y su historial. Solo las ve quien participa en ellas.
 @Injectable()
 export class ConversationsReadService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly urls: MediaUrlService,
+  ) {}
+
+  /** La foto firmada de cada persona (bug 1072). */
+  readonly urlFor = (key: string): string => this.urls.urlFor(key);
 
   async inbox(
     userId: string,
@@ -58,7 +65,7 @@ export class ConversationsReadService {
       take: limit + 1,
       select: CONVERSATION_VIEW_SELECT,
     });
-    return toConversationPage(rows, limit, userId);
+    return toConversationPage(rows, limit, userId, this.urlFor);
   }
 
   async findOne(id: string, userId: string): Promise<ConversationViewDto> {
@@ -67,7 +74,7 @@ export class ConversationsReadService {
       select: CONVERSATION_VIEW_SELECT,
     });
     if (!row) throw conversationNotFound();
-    return toConversationView(row, userId);
+    return toConversationView(row, userId, this.urlFor);
   }
 
   async messages(

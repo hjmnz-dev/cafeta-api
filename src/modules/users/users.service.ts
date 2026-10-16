@@ -26,7 +26,12 @@ export interface CurrentUser {
   verificationStatus: VerificationStatus;
   /** Fecha de registro en ISO 8601 ("miembro desde" en Configuración). */
   createdAt: string;
-  profile: { handle: string; displayName: string; careerId: string | null };
+  profile: {
+    handle: string;
+    displayName: string;
+    careerId: string | null;
+    avatarKey: string | null;
+  };
 }
 
 export interface UserWithHash {
@@ -42,7 +47,14 @@ const CURRENT_USER_SELECT = {
   role: true,
   verificationStatus: true,
   createdAt: true,
-  profile: { select: { handle: true, displayName: true, careerId: true } },
+  profile: {
+    select: {
+      handle: true,
+      displayName: true,
+      careerId: true,
+      avatarKey: true,
+    },
+  },
 } as const;
 
 export interface ProfileRecord {
@@ -178,11 +190,7 @@ function toCurrentUser(user: {
   role: Role;
   verificationStatus: VerificationStatus;
   createdAt: Date;
-  profile: {
-    handle: string;
-    displayName: string;
-    careerId: string | null;
-  } | null;
+  profile: CurrentUser['profile'] | null;
 }): CurrentUser {
   if (!user.profile) {
     throw new Error(`El usuario ${user.id} no tiene perfil`);

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { NotificationType } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { MediaUrlService } from '../uploads/media-url.service.js';
 import { RealtimePublisher } from '../realtime/realtime.publisher.js';
 import { VisibilityService } from '../visibility/visibility.service.js';
 import { NOTIFICATION_VIEW_SELECT } from './notification-queries.js';
@@ -30,6 +31,7 @@ export class NotificationsService {
     private readonly prisma: PrismaService,
     private readonly visibility: VisibilityService,
     private readonly realtime: RealtimePublisher,
+    private readonly urls: MediaUrlService,
   ) {}
 
   // Nunca lanza: si el aviso falla, la acción que lo generó ya quedó hecha y
@@ -52,7 +54,7 @@ export class NotificationsService {
       this.realtime.toUsers(
         [input.recipientId],
         'notification:new',
-        toNotificationView(row),
+        toNotificationView(row, (key) => this.urls.urlFor(key)),
       );
     } catch (error) {
       this.logger.error(

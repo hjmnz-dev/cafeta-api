@@ -36,7 +36,7 @@ export const NOTIFICATION_VIEW_SELECT = {
   actor: {
     select: {
       id: true,
-      profile: { select: { handle: true, displayName: true } },
+      profile: { select: { handle: true, displayName: true, avatarKey: true } },
     },
   },
 } satisfies Prisma.NotificationSelect;

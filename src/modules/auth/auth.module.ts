@@ -5,10 +5,12 @@ import { JwtModule } from '@nestjs/jwt';
 import { AuditModule } from '../../common/audit/audit.module.js';
 import type { EnvironmentVariables } from '../../config/env.validation.js';
 import { CareersModule } from '../careers/careers.module.js';
+import { UploadsModule } from '../uploads/uploads.module.js';
 import { UsersModule } from '../users/users.module.js';
 import { AccessTokenService } from './access-token.service.js';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
+import { CurrentUserPresenter } from './current-user.presenter.js';
 import { JwtAuthGuard } from './jwt-auth.guard.js';
 import { SessionsService } from './sessions.service.js';
 
@@ -17,6 +19,7 @@ import { SessionsService } from './sessions.service.js';
     AuditModule,
     UsersModule,
     CareersModule,
+    UploadsModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService<EnvironmentVariables, true>) => ({
@@ -28,6 +31,7 @@ import { SessionsService } from './sessions.service.js';
   controllers: [AuthController],
   providers: [
     AuthService,
+    CurrentUserPresenter,
     SessionsService,
     AccessTokenService,
     // Guard global: toda ruta exige sesión salvo las @Public().

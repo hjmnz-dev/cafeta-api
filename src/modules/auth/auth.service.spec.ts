@@ -12,6 +12,8 @@ import { BCRYPT_COST, DUMMY_PASSWORD_HASH } from './auth.constants.js';
 import { AuthService } from './auth.service.js';
 import type { RegisterDto } from './dto/register.dto.js';
 import type { SessionsService } from './sessions.service.js';
+import type { MediaUrlService } from '../uploads/media-url.service.js';
+import { CurrentUserPresenter } from './current-user.presenter.js';
 
 // Reglas de AuthService (spec 0004) que las e2e no pueden forzar: la carrera
 // de dos registros sobre el handle, la comparación con el hash de relleno y el
@@ -38,6 +40,7 @@ const currentUser: CurrentUser = {
     handle: 'cgomez_intec',
     displayName: 'Carlos Gómez',
     careerId: '01926f00-0000-7000-8000-0000000000c1',
+    avatarKey: null,
   },
 };
 
@@ -91,6 +94,9 @@ function setup() {
     sessions as unknown as SessionsService,
     audit as unknown as AuditService,
     jwt,
+    new CurrentUserPresenter({
+      urlFor: (key: string) => `https://blob.test/${key}`,
+    } as MediaUrlService),
     config,
   );
   return { service, users, careers, sessions, audit, transaction, jwt };
@@ -132,7 +138,12 @@ describe('AuthService.register', () => {
     const { service } = setup();
     await expect(
       service.register(dto({ email: 'profe@intec.edu.do' }), actor),
-    ).resolves.toMatchObject({ user: currentUser });
+    ).resolves.toMatchObject({
+      user: {
+        id: currentUser.id,
+        profile: { handle: currentUser.profile.handle, avatarUrl: null },
+      },
+    });
   });
 
   it('AC-3: si otro registro gana la carrera por el handle, responde HANDLE_TAKEN', async () => {

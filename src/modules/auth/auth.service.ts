@@ -14,13 +14,17 @@ import { AuditService } from '../../common/audit/audit.service.js';
 import type { EnvironmentVariables } from '../../config/env.validation.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { CareersService } from '../careers/careers.service.js';
-import { UsersService, type CurrentUser } from '../users/users.service.js';
+import { UsersService } from '../users/users.service.js';
 import {
   BCRYPT_COST,
   DUMMY_PASSWORD_HASH,
   TERMS_VERSION,
 } from './auth.constants.js';
-import type { AuthResponseDto } from './dto/auth-response.dto.js';
+import { CurrentUserPresenter } from './current-user.presenter.js';
+import type {
+  AuthResponseDto,
+  CurrentUserDto,
+} from './dto/auth-response.dto.js';
 import type { LoginDto } from './dto/login.dto.js';
 import type { RegisterDto } from './dto/register.dto.js';
 import { SessionsService, type IssuedSession } from './sessions.service.js';
@@ -38,6 +42,7 @@ export class AuthService {
     private readonly sessions: SessionsService,
     private readonly audit: AuditService,
     private readonly jwt: JwtService,
+    private readonly presenter: CurrentUserPresenter,
     config: ConfigService<EnvironmentVariables, true>,
   ) {
     this.allowedDomains = config
@@ -97,7 +102,7 @@ export class AuthService {
         });
         return { user, session };
       });
-      return this.response(user, session);
+      return this.response(this.presenter.toView(user), session);
     } catch (error) {
       throw uniqueViolation(error) ?? error;
     }
@@ -140,7 +145,7 @@ export class AuthService {
     return this.sessions.revoke(sessionId, new Date());
   }
 
-  async me(userId: string): Promise<CurrentUser> {
+  async me(userId: string): Promise<CurrentUserDto> {
     const user = await this.users.findCurrent(userId);
     if (!user) {
       throw new UnauthorizedException({
@@ -148,11 +153,11 @@ export class AuthService {
         code: 'SESSION_REVOKED',
       });
     }
-    return user;
+    return this.presenter.toView(user);
   }
 
   private async response(
-    user: CurrentUser,
+    user: CurrentUserDto,
     session: IssuedSession,
   ): Promise<AuthResponseDto> {
     const payload: TokenPayload & { exp: number } = {

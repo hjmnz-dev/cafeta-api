@@ -6,7 +6,9 @@ import type {
 
 export function toNotificationView(
   row: NotificationViewRow,
+  urlFor: (key: string) => string,
 ): NotificationViewDto {
+  const avatarKey = row.actor?.profile?.avatarKey;
   return {
     id: row.id,
     type: row.type,
@@ -15,6 +17,7 @@ export function toNotificationView(
           id: row.actor.id,
           handle: row.actor.profile?.handle ?? '',
           displayName: row.actor.profile?.displayName ?? '',
+          avatarUrl: avatarKey ? urlFor(avatarKey) : null,
         }
       : null,
     postId: row.postId,
@@ -29,11 +32,12 @@ export function toNotificationView(
 export function toNotificationPage(
   rows: NotificationViewRow[],
   limit: number,
+  urlFor: (key: string) => string,
 ): NotificationPageDto {
   const page = rows.slice(0, limit);
   const last = page.at(-1);
   return {
-    items: page.map(toNotificationView),
+    items: page.map((row) => toNotificationView(row, urlFor)),
     nextCursor: rows.length > limit && last ? last.id : null,
   };
 }
