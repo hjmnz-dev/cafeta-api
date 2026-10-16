@@ -48,7 +48,7 @@ export class PostCommentsService {
     { cursor, limit }: PageQueryDto,
     user: AuthenticatedUser,
   ): Promise<CommentPageDto> {
-    await this.access.authorIdOf(postId, user.id);
+    await this.access.readableAuthorIdOf(postId, user.id);
     const where: Prisma.PostCommentWhereInput = {
       postId,
       ...ACTIVE,

@@ -6,13 +6,17 @@ import { PageQueryDto } from '../posts/dto/page-query.dto.js';
 import { PostPageDto } from '../posts/dto/post-page.dto.js';
 import { SearchQueryDto } from './dto/search-query.dto.js';
 import { SearchUserPageDto } from './dto/search-user-view.dto.js';
+import { DiscoverPeopleService } from './discover-people.service.js';
 import { SearchService } from './search.service.js';
 
 @ApiTags('search')
 @ApiBearerAuth()
 @Controller()
 export class SearchController {
-  constructor(private readonly search: SearchService) {}
+  constructor(
+    private readonly search: SearchService,
+    private readonly discover: DiscoverPeopleService,
+  ) {}
 
   /** Personas por nombre, usuario o carrera; ignora mayúsculas y acentos. */
   @Get('search/users')
@@ -30,6 +34,15 @@ export class SearchController {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<PostPageDto> {
     return this.search.posts(user.id, query.q, query);
+  }
+
+  /** Personas sugeridas para Descubrir: primero las de mi carrera. */
+  @Get('discover/people')
+  people(
+    @Query() query: PageQueryDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<SearchUserPageDto> {
+    return this.discover.people(user.id, query);
   }
 
   /** Publicaciones recientes y movidas de otras personas. */

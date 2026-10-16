@@ -8,6 +8,7 @@ import { PrismaService } from '../../prisma/prisma.service.js';
 import { canSeeContent } from '../visibility/visibility-rules.js';
 import { VisibilityService } from '../visibility/visibility.service.js';
 import type { FeedQueryDto } from './dto/feed-query.dto.js';
+import type { AuthorPostsQueryDto } from './dto/author-posts-query.dto.js';
 import type { PageQueryDto } from './dto/page-query.dto.js';
 import type { PostCountDto, PostPageDto } from './dto/post-page.dto.js';
 import {
@@ -17,6 +18,7 @@ import {
   hiddenWhere,
   POST_ORDER,
   postViewSelect,
+  RESOURCE_POST,
   VISIBLE_POST,
 } from './post-queries.js';
 import { MediaUrlService } from '../uploads/media-url.service.js';
@@ -57,7 +59,7 @@ export class PostsReadService {
   async byAuthor(
     viewerId: string,
     authorId: string,
-    query: PageQueryDto,
+    query: AuthorPostsQueryDto,
   ): Promise<PostPageDto> {
     const facts = await this.visibility.visibleProfileFacts(viewerId, authorId);
     if (!canSeeContent(facts)) {
@@ -66,7 +68,10 @@ export class PostsReadService {
         code: 'PROFILE_RESTRICTED',
       });
     }
-    return this.page(viewerId, authorWhere(authorId), query);
+    const where = query.resources
+      ? { AND: [authorWhere(authorId), RESOURCE_POST] }
+      : authorWhere(authorId);
+    return this.page(viewerId, where, query);
   }
 
   // El conteo forma parte del perfil limitado: solo pide que el perfil se vea.

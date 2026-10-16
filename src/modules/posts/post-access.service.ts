@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { ACTIVE } from '../../common/soft-delete/soft-delete.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { VISIBLE_POST } from './post-queries.js';
 import { VisibilityService } from '../visibility/visibility.service.js';
@@ -24,11 +25,32 @@ export class PostAccessService {
       !post ||
       !(await this.visibility.canSeeContent(viewerId, post.authorId))
     ) {
-      throw new NotFoundException({
-        message: 'La publicación no existe',
-        code: 'POST_NOT_FOUND',
-      });
+      throw postNotFound();
     }
     return post.authorId;
   }
+
+  // Leer (no escribir) también vale para mis propias archivadas: las sigo
+  // viendo en "Publicaciones archivadas" con su conteo de comentarios (bug
+  // 1038). Para los demás es igual que authorIdOf.
+  async readableAuthorIdOf(postId: string, viewerId: string): Promise<string> {
+    const own = await this.prisma.post.findFirst({
+      where: {
+        id: postId,
+        authorId: viewerId,
+        deactivatedAt: null,
+        archivedAt: { not: null },
+        author: ACTIVE,
+      },
+      select: { authorId: true },
+    });
+    return own ? own.authorId : this.authorIdOf(postId, viewerId);
+  }
+}
+
+function postNotFound(): NotFoundException {
+  return new NotFoundException({
+    message: 'La publicación no existe',
+    code: 'POST_NOT_FOUND',
+  });
 }

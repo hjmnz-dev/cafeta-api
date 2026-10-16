@@ -77,6 +77,11 @@ export function authorWhere(authorId: string): Prisma.PostWhereInput {
   return { AND: [VISIBLE_POST, { authorId }] };
 }
 
+// Recursos del perfil (bug 1029): las publicaciones con un PDF adjunto.
+export const RESOURCE_POST = {
+  media: { some: { mediaType: 'DOCUMENT' } },
+} satisfies Prisma.PostWhereInput;
+
 // Lo que viene después de la publicación del cursor en el orden de POST_ORDER.
 export function afterCursor(
   createdAt: Date,

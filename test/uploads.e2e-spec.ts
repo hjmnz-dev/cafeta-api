@@ -160,6 +160,72 @@ describe('Subida de archivos (e2e)', () => {
       .expect(401);
   });
 
+  const seedPost = (
+    authorId: string,
+    content: string,
+    extra: Record<string, unknown> = {},
+  ) =>
+    prisma.post.create({ data: { authorId, content, type: 'TEXT', ...extra } });
+  const getAs = (token: string, path: string) =>
+    request(server)
+      .get(`/api/v1${path}`)
+      .set('Authorization', `Bearer ${token}`);
+  const contents = (body: { items: { content: string | null }[] }) =>
+    body.items.map((p) => p.content);
+
+  it('bug 1029: ?resources=true deja solo las publicaciones con un PDF, para los Recursos del perfil', async () => {
+    const ana = await signUp(server, 'ana', careerId);
+    const doc = await seedPost(ana.id, 'pensum en PDF');
+    await prisma.postMedia.create({
+      data: {
+        postId: doc.id,
+        storageKey: 'posts/pensum.pdf',
+        mediaType: 'DOCUMENT',
+        mimeType: 'application/pdf',
+        sizeBytes: 1024,
+        position: 0,
+      },
+    });
+    const foto = await seedPost(ana.id, 'con foto');
+    await prisma.postMedia.create({
+      data: {
+        postId: foto.id,
+        storageKey: 'posts/foto.png',
+        mediaType: 'IMAGE',
+        mimeType: 'image/png',
+        sizeBytes: 1024,
+        position: 0,
+      },
+    });
+    await seedPost(ana.id, 'solo texto');
+    await seedPost(ana.id, 'PDF archivado', {
+      archivedAt: new Date(),
+      media: {
+        create: {
+          storageKey: 'posts/viejo.pdf',
+          mediaType: 'DOCUMENT',
+          mimeType: 'application/pdf',
+          sizeBytes: 1024,
+          position: 0,
+        },
+      },
+    });
+
+    const recursos = await getAs(
+      ana.token,
+      `/users/${ana.id}/posts?resources=true`,
+    ).expect(200);
+    expect(contents(recursos.body)).toEqual(['pensum en PDF']);
+    const todas = await getAs(
+      ana.token,
+      `/users/${ana.id}/posts?resources=false`,
+    ).expect(200);
+    expect(contents(todas.body)).toHaveLength(3);
+    await getAs(ana.token, `/users/${ana.id}/posts?resources=quizas`).expect(
+      400,
+    );
+  });
+
   it('una publicación con la clave subida muestra el adjunto en el feed', async () => {
     const ana = await signUp(server, 'ana', careerId);
     const { key } = (await upload(ana.token, PNG, 'foto.png').expect(201))

@@ -207,6 +207,65 @@ describe('Búsqueda y descubrimiento (e2e)', () => {
     });
   });
 
+  it('Descubrir (bugs 1031 y 1033): sugiere personas reales que aún no sigo, primero las de mi carrera', async () => {
+    const ana = await signUp('ana', 'Ana', 'Tester');
+    const beto = await signUp('beto', 'Beto', 'Tester');
+    const carla = await signUp('carla', 'Carla', 'Tester', otherCareerId);
+    const dani = await signUp('dani', 'Dani', 'Tester');
+    const eli = await signUp('eli', 'Eli', 'Tester');
+    const fede = await signUp('fede', 'Fede', 'Tester');
+    const gabi = await signUp('gabi', 'Gabi', 'Tester');
+    const admin = await signUp('admin', 'Admin', 'Tester');
+    const hugo = await signUp('hugo', 'Hugo', 'Tester');
+    await prisma.follow.create({
+      data: { followerId: ana.id, followingId: dani.id, status: 'ACCEPTED' },
+    });
+    await prisma.follow.create({
+      data: { followerId: ana.id, followingId: eli.id, status: 'PENDING' },
+    });
+    await prisma.block.create({
+      data: { blockerId: fede.id, blockedId: ana.id },
+    });
+    await prisma.user.update({
+      where: { id: gabi.id },
+      data: { deactivatedAt: new Date() },
+    });
+    await prisma.user.update({
+      where: { id: admin.id },
+      data: { role: 'ADMIN' },
+    });
+
+    const res = await get(ana, '/discover/people').expect(200);
+    expect(res.body.items.map((u: { handle: string }) => u.handle)).toEqual([
+      'hugo',
+      'beto',
+      'carla',
+    ]);
+    expect(res.body.items[0]).toMatchObject({
+      followStatus: 'NONE',
+      canFollow: true,
+    });
+
+    const first = await get(ana, '/discover/people?limit=2').expect(200);
+    expect(first.body.items.map((u: { id: string }) => u.id)).toEqual([
+      hugo.id,
+      beto.id,
+    ]);
+    const second = await get(
+      ana,
+      `/discover/people?limit=2&cursor=${first.body.nextCursor}`,
+    ).expect(200);
+    expect(second.body.items.map((u: { id: string }) => u.id)).toEqual([
+      carla.id,
+    ]);
+    expect(second.body.nextCursor).toBeNull();
+    const bad = await get(ana, `/discover/people?cursor=${dani.id}`).expect(
+      400,
+    );
+    expect(bad.body.code).toBe('INVALID_CURSOR');
+    await request(server).get('/api/v1/discover/people').expect(401);
+  });
+
   it('AC-5: pagina por cursor sin repetir ni saltar, y rechaza un cursor ajeno', async () => {
     const ana = await signUp('ana');
     for (const n of ['uno', 'dos', 'tres', 'cuatro', 'cinco']) {
