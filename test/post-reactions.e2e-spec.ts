@@ -261,4 +261,56 @@ describe('Reacciones a publicaciones (e2e)', () => {
       .expect(401);
     expect(await prisma.postReaction.count()).toBe(0);
   });
+
+  // Bug 1076: el autor ve quién reaccionó y con qué; nadie más.
+  const reactors = (account: Account, postId: string, query = '') =>
+    as(account).get(`/posts/${postId}/reactions${query}`);
+
+  it('bug 1076: el autor ve quién reaccionó y con qué, igual que el conteo', async () => {
+    const ana = await signUp('ana');
+    const beto = await signUp('beto');
+    const carla = await signUp('carla');
+    const dani = await signUp('dani');
+    const postId = await publish(ana);
+    await react(beto, postId, 'HEART').expect(200);
+    await react(carla, postId, 'LAUGH').expect(200);
+    await react(dani, postId, 'FIRE').expect(200);
+    await unreact(dani, postId).expect(200);
+
+    const res = await reactors(ana, postId).expect(200);
+    const seen = res.body.items.map(
+      (r: { type: string; user: { handle: string; id: string } }) =>
+        `${r.user.handle}:${r.type}`,
+    );
+    expect(seen.sort()).toEqual(['beto:HEART', 'carla:LAUGH']);
+    expect(res.body.items[0].user).toHaveProperty('avatarUrl');
+    expect(res.body.nextCursor).toBeNull();
+    const feed = await as(ana).get('/posts/feed').expect(200);
+    expect(feed.body.items[0].reactionCount).toBe(res.body.items.length);
+  });
+
+  it('bug 1076: quien no es el autor no ve la lista; pagina por cursor', async () => {
+    const ana = await signUp('ana');
+    const beto = await signUp('beto');
+    const carla = await signUp('carla');
+    const postId = await publish(ana);
+    await react(beto, postId, 'HEART').expect(200);
+    await react(carla, postId, 'WOW').expect(200);
+
+    const denied = await reactors(beto, postId).expect(403);
+    expect(denied.body.code).toBe('NOT_POST_AUTHOR');
+
+    const first = await reactors(ana, postId, '?limit=1').expect(200);
+    expect(first.body.items).toHaveLength(1);
+    const second = await reactors(
+      ana,
+      postId,
+      `?limit=1&cursor=${first.body.nextCursor}`,
+    ).expect(200);
+    expect(second.body.items).toHaveLength(1);
+    expect(second.body.items[0].id).not.toBe(first.body.items[0].id);
+    expect(second.body.nextCursor).toBeNull();
+
+    await reactors(ana, MISSING_ID).expect(404);
+  });
 });
