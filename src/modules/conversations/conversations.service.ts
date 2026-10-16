@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { NotificationsReadService } from '../notifications/notifications-read.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import { RealtimePublisher } from '../realtime/realtime.publisher.js';
 import { UsersService } from '../users/users.service.js';
@@ -32,6 +33,7 @@ export class ConversationsService {
     private readonly reads: ConversationsReadService,
     private readonly realtime: RealtimePublisher,
     private readonly notifications: NotificationsService,
+    private readonly notificationReads: NotificationsReadService,
   ) {}
 
   // Una sola conversación por par: si ya existe, se devuelve la misma.
@@ -142,5 +144,6 @@ export class ConversationsService {
           ? { userALastReadAt: now }
           : { userBLastReadAt: now },
     });
+    await this.notificationReads.markConversationRead(userId, conversationId);
   }
 }

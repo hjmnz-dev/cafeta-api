@@ -39,6 +39,8 @@ export function toPostView(row: PostViewRow, urlFor: UrlFor): PostViewDto {
       handle: profile?.handle ?? '',
       displayName: profile?.displayName ?? '',
       careerName: profile?.career?.name ?? null,
+      // Bug 1043: la foto del perfil, igual que en la cabecera del perfil.
+      avatarUrl: profile?.avatarKey ? urlFor(profile.avatarKey) : null,
       verified: row.author.verificationStatus === 'VERIFIED',
     },
     reactionCount: row._count.reactions,

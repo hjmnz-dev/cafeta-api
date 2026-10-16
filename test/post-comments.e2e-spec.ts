@@ -237,6 +237,33 @@ describe('Comentarios en publicaciones (e2e)', () => {
     await list(beto, 'no-es-uuid').expect(400);
   });
 
+  it('bug 1038: el dueño lee los comentarios de su publicación archivada, pero nadie comenta en ella', async () => {
+    const ana = await signUp('ana');
+    const beto = await signUp('beto');
+    const postId = await publish(ana);
+    await comment(beto, postId, 'Buen resumen').expect(201);
+    await prisma.post.update({
+      where: { id: postId },
+      data: { archivedAt: new Date() },
+    });
+
+    const mine = await list(ana, postId).expect(200);
+    expect(mine.body.items.map((c: { content: string }) => c.content)).toEqual([
+      'Buen resumen',
+    ]);
+    const ajeno = await list(beto, postId).expect(404);
+    expect(ajeno.body.code).toBe('POST_NOT_FOUND');
+    const crear = await comment(ana, postId, 'Nuevo').expect(404);
+    expect(crear.body.code).toBe('POST_NOT_FOUND');
+
+    // Desactivada (no archivada) sigue cerrada también para su dueño.
+    await prisma.post.update({
+      where: { id: postId },
+      data: { archivedAt: null, deactivatedAt: new Date() },
+    });
+    await list(ana, postId).expect(404);
+  });
+
   it('si el autor solo deja ver su contenido a seguidores, quien no lo sigue recibe 404', async () => {
     const ana = await signUp('ana');
     const beto = await signUp('beto');
