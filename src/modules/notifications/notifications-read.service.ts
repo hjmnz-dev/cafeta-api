@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { MediaUrlService } from '../uploads/media-url.service.js';
 import type { PageQueryDto } from '../posts/dto/page-query.dto.js';
 import {
   afterNotification,
@@ -21,7 +22,10 @@ import type {
 // toca los suyos.
 @Injectable()
 export class NotificationsReadService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly urls: MediaUrlService,
+  ) {}
 
   async list(
     userId: string,
@@ -35,7 +39,7 @@ export class NotificationsReadService {
       take: limit + 1,
       select: NOTIFICATION_VIEW_SELECT,
     });
-    return toNotificationPage(rows, limit);
+    return toNotificationPage(rows, limit, (key) => this.urls.urlFor(key));
   }
 
   async unreadCount(userId: string): Promise<UnreadCountDto> {

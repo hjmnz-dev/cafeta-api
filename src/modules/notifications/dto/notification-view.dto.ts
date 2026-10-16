@@ -7,6 +7,9 @@ export class NotificationActorDto {
   handle: string;
   /** @example Carlos Gómez */
   displayName: string;
+  /** Su foto de perfil (URL firmada); null si no tiene. */
+  @ApiProperty({ type: String, nullable: true })
+  avatarUrl: string | null;
 }
 
 export class NotificationViewDto {

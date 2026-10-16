@@ -23,6 +23,7 @@ export function toMessageView(row: MessageViewRow): MessageViewDto {
 export function toConversationView(
   row: ConversationViewRow,
   viewerId: string,
+  urlFor: (key: string) => string,
 ): ConversationViewDto {
   const viewerIsA = row.userAId === viewerId;
   const other = viewerIsA ? row.userB : row.userA;
@@ -34,6 +35,9 @@ export function toConversationView(
       id: other.id,
       handle: other.profile?.handle ?? '',
       displayName: other.profile?.displayName ?? '',
+      avatarUrl: other.profile?.avatarKey
+        ? urlFor(other.profile.avatarKey)
+        : null,
       careerName: other.profile?.career?.name ?? null,
       verified: other.verificationStatus === 'VERIFIED',
     },
@@ -63,9 +67,12 @@ export function toConversationPage(
   rows: ConversationViewRow[],
   limit: number,
   viewerId: string,
+  urlFor: (key: string) => string,
 ): ConversationPageDto {
   return {
-    items: rows.slice(0, limit).map((row) => toConversationView(row, viewerId)),
+    items: rows
+      .slice(0, limit)
+      .map((row) => toConversationView(row, viewerId, urlFor)),
     nextCursor: nextCursorOf(rows, limit),
   };
 }

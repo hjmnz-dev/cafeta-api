@@ -94,6 +94,7 @@ const USER_VIEW_SELECT = {
     select: {
       handle: true,
       displayName: true,
+      avatarKey: true,
       career: { select: { name: true } },
     },
   },

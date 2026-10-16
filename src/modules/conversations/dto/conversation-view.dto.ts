@@ -6,6 +6,9 @@ export class ConversationUserDto {
   handle: string;
   /** @example Carlos Gómez */
   displayName: string;
+  /** Su foto de perfil (URL firmada); null si no tiene. */
+  @ApiProperty({ type: String, nullable: true })
+  avatarUrl: string | null;
   @ApiProperty({
     type: String,
     nullable: true,

@@ -7,6 +7,9 @@ export class ProfileSummaryDto {
   displayName: string;
   @ApiProperty({ type: String, nullable: true })
   careerId: string | null;
+  /** Mi foto de perfil (URL firmada); null si no tengo. */
+  @ApiProperty({ type: String, nullable: true })
+  avatarUrl: string | null;
 }
 
 export class CurrentUserDto {

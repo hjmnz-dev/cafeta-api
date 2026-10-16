@@ -2,6 +2,7 @@ import type { PrismaService } from '../../prisma/prisma.service.js';
 import type { RealtimePublisher } from '../realtime/realtime.publisher.js';
 import type { VisibilityService } from '../visibility/visibility.service.js';
 import { NotificationsService } from './notifications.service.js';
+import type { MediaUrlService } from '../uploads/media-url.service.js';
 
 // La opción once (spec 0009): no repite el aviso del mismo receptor, actor,
 // tipo y publicación. La base queda del otro lado de dobles por constructor.
@@ -35,6 +36,7 @@ function setup(existing: { id: string } | null) {
     prisma as unknown as PrismaService,
     visibility as unknown as VisibilityService,
     realtime as unknown as RealtimePublisher,
+    { urlFor: (key: string) => `https://blob.test/${key}` } as MediaUrlService,
   );
   return { service, notification, realtime };
 }

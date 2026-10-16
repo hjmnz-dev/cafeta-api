@@ -77,7 +77,7 @@ export class ConversationsService {
       update: {},
       select: CONVERSATION_VIEW_SELECT,
     });
-    return toConversationView(row, userId);
+    return toConversationView(row, userId, this.reads.urlFor);
   }
 
   async send(
