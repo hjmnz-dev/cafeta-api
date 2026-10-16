@@ -7,6 +7,7 @@ import { StoryAccessService } from './story-access.service.js';
 import { StoriesController } from './stories.controller.js';
 import { StoriesService } from './stories.service.js';
 import { StoryEditsService } from './story-edits.service.js';
+import { StoryViewsService } from './story-views.service.js';
 
 // Historias de 24 horas (spec 0008, decisión 22; editar y desactivar, spec 0009,
 // decisión 23). Exporta StoryAccessService: reacciones y comentarios (decisión
@@ -19,6 +20,7 @@ import { StoryEditsService } from './story-edits.service.js';
     StoryEditsService,
     StoriesReadService,
     StoryAccessService,
+    StoryViewsService,
   ],
   exports: [StoryAccessService],
 })

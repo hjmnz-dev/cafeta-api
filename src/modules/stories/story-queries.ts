@@ -79,6 +79,8 @@ export const storyViewSelect = (viewerId: string) =>
       select: { type: true },
       take: 1,
     },
+    // Si quien mira ya la abrió alguna vez (bug 1068).
+    views: { where: { viewerId }, select: { id: true }, take: 1 },
     _count: {
       select: {
         reactions: { where: { deactivatedAt: null, user: ACTIVE } },

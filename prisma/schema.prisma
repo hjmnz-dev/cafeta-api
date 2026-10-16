@@ -187,6 +187,7 @@ model User {
   savedPosts             SavedPost[]
   stories                Story[]
   storyReactions         StoryReaction[]
+  storyViews             StoryView[]
   storyComments          StoryComment[]
   conversationsAsA       Conversation[]          @relation("ConversationUserA")
   conversationsAsB       Conversation[]          @relation("ConversationUserB")
@@ -423,10 +424,28 @@ model Story {
   reactions     StoryReaction[]
   comments      StoryComment[]
   notifications Notification[]
+  views         StoryView[]
 
   @@index([authorId, expiresAt])
   @@index([expiresAt])
   @@map("stories")
+}
+
+// Quién ya vio cada historia (bug 1068): una fila por persona e historia, la
+// primera vez que la abre. Sirve para el anillo gris de lo ya visto; no se
+// audita ni se desactiva, y se va con la historia.
+model StoryView {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  storyId   String   @map("story_id") @db.Uuid
+  viewerId  String   @map("viewer_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  story  Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  viewer User  @relation(fields: [viewerId], references: [id], onDelete: Restrict)
+
+  @@unique([storyId, viewerId])
+  @@index([viewerId])
+  @@map("story_views")
 }
 
 model StoryReaction {

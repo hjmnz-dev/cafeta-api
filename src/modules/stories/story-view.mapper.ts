@@ -31,12 +31,14 @@ export function toStoryView(
     myReaction: row.reactions[0]?.type ?? null,
     reactionCount: row.author.id === viewerId ? row._count.reactions : null,
     commentCount: row._count.comments,
+    seenByMe: row.views.length > 0,
   };
 }
 
 // Las filas llegan de la más reciente a la más antigua: el primer grupo es el
 // del autor con la historia más reciente; dentro de cada grupo se invierte
-// para verlas en el orden en que se publicaron.
+// para verlas en el orden en que se publicaron. Los grupos con algo sin ver van
+// antes que los ya vistos (bug 1068), sin cambiar el orden dentro de cada lado.
 export function toStoryTray(
   rows: StoryViewRow[],
   viewerId: string,
@@ -60,5 +62,7 @@ export function toStoryTray(
     group.stories.unshift(story);
     groups.set(row.author.id, group);
   }
-  return { groups: [...groups.values()] };
+  const seen = (g: StoryGroupDto) => g.stories.every((s) => s.seenByMe);
+  const all = [...groups.values()];
+  return { groups: [...all.filter((g) => !seen(g)), ...all.filter(seen)] };
 }

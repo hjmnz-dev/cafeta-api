@@ -19,6 +19,7 @@ const row = (overrides: Partial<StoryViewRow> = {}): StoryViewRow => ({
     profile: { handle: 'ana', displayName: 'Ana', avatarKey: null },
   },
   reactions: [],
+  views: [],
   _count: { reactions: 3, comments: 2 },
   ...overrides,
 });
@@ -52,5 +53,35 @@ describe('toStoryView · reacciones y comentarios (decisión 24)', () => {
     const tray = toStoryTray([row()], VIEWER, urlFor);
 
     expect(tray.groups[0].stories[0].reactionCount).toBeNull();
+  });
+});
+
+describe('historias vistas (bug 1068)', () => {
+  it('seenByMe es true solo si tengo una fila de vista', () => {
+    expect(toStoryView(row(), VIEWER, urlFor)?.seenByMe).toBe(false);
+    expect(
+      toStoryView(row({ views: [{ id: 'v1' }] }), VIEWER, urlFor)?.seenByMe,
+    ).toBe(true);
+  });
+
+  it('la bandeja pone primero a los autores con algo sin ver', () => {
+    const OTHER = '01926f00-0000-7000-8000-0000000000cc';
+    const tray = toStoryTray(
+      [
+        // La más reciente es de Ana, pero ya la vi.
+        row({ id: 's2', views: [{ id: 'v1' }] }),
+        row({
+          id: 's1',
+          author: {
+            id: OTHER,
+            profile: { handle: 'beto', displayName: 'Beto', avatarKey: null },
+          },
+        }),
+      ],
+      VIEWER,
+      urlFor,
+    );
+
+    expect(tray.groups.map((g) => g.author.handle)).toEqual(['beto', 'ana']);
   });
 });

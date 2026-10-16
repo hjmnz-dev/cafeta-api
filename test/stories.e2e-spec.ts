@@ -311,4 +311,57 @@ describe('Crear y ver historias (e2e)', () => {
     await request(server).get('/api/v1/stories').expect(401);
     await request(server).post('/api/v1/stories').send({}).expect(401);
   });
+
+  it('bug 1068: abrir una historia la marca como vista para mí (una sola vez) y la tira deja lo visto al final', async () => {
+    const ana = await signUp('ana');
+    const beto = await signUp('beto');
+    const carla = await signUp('carla');
+    await follow(carla, ana);
+    await follow(carla, beto);
+    const deAna = (await publish(ana, 'De Ana')).body.id as string;
+    const deBeto = (await publish(beto, 'De Beto')).body.id as string;
+    const view = (account: Account, id: string) =>
+      request(server).post(`/api/v1/stories/${id}/view`).set(auth(account));
+
+    const before = (await tray(carla).expect(200)).body;
+    expect(
+      before.groups.map((g: { author: { handle: string } }) => g.author.handle),
+    ).toEqual(['beto', 'ana']);
+    expect(before.groups[0].stories[0].seenByMe).toBe(false);
+
+    await view(carla, deBeto).expect(204);
+    await view(carla, deBeto).expect(204);
+
+    const after = (await tray(carla).expect(200)).body;
+    // Beto ya está visto: pasa detrás de Ana, que sigue sin ver.
+    expect(
+      after.groups.map(
+        (g: { author: { handle: string }; stories: { seenByMe: boolean }[] }) =>
+          `${g.author.handle}:${g.stories[0].seenByMe}`,
+      ),
+    ).toEqual(['ana:false', 'beto:true']);
+    expect(await prisma.storyView.count()).toBe(1);
+    // Lo que vio Carla no cambia lo que ve Ana de su propia historia.
+    const deAnaParaAna = (await tray(ana).expect(200)).body.groups[0]
+      .stories[0];
+    expect(deAnaParaAna).toMatchObject({ id: deAna, seenByMe: false });
+  });
+
+  it('bug 1068: una historia que no puedo ver responde 404 y sin token 401', async () => {
+    const ana = await signUp('ana');
+    const beto = await signUp('beto');
+    const id = (await publish(ana, 'Solo para seguidores')).body.id as string;
+    await prisma.profile.update({
+      where: { userId: ana.id },
+      data: { visibility: 'FOLLOWERS' },
+    });
+
+    const res = await request(server)
+      .post(`/api/v1/stories/${id}/view`)
+      .set(auth(beto))
+      .expect(404);
+    expect(res.body.code).toBe('STORY_NOT_FOUND');
+    await request(server).post(`/api/v1/stories/${id}/view`).expect(401);
+    expect(await prisma.storyView.count()).toBe(0);
+  });
 });
