@@ -1,114 +1,212 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+<div align="center">
+  <br />
+  <img src="docs/readme/banner.webp" alt="Banner de la API de Cafeta">
+  <br />
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+  <div>
+<img src="https://img.shields.io/badge/NestJS-E0234E?style=for-the-badge&logo=nestjs&logoColor=white" alt="NestJS" />
+<img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+<img src="https://img.shields.io/badge/Prisma-2D3748?style=for-the-badge&logo=prisma&logoColor=white" alt="Prisma" />
+<img src="https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" />
+<img src="https://img.shields.io/badge/Socket.io-010101?style=for-the-badge&logo=socketdotio&logoColor=white" alt="Socket.io" />
+  </div>
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+  <h3 align="center">Cafeta API</h3>
 
-## Description
+  <p align="center"><a href="https://cafeta-api-hj01.azurewebsites.net/api/docs">Documentación en vivo (Swagger)</a></p>
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+  <p align="center">El backend de Cafeta, la red social de la comunidad universitaria de INTEC, en República Dominicana.</p>
+</div>
 
-## Project setup
+## 📋 <a name="table">Tabla de contenido</a>
 
-```bash
-$ npm install
+1. ✨ [Introducción](#introduction)
+2. ⚙️ [Stack](#tech-stack)
+3. 🔋 [Funciones](#features)
+4. 🗂️ [Estructura](#project-structure)
+5. 🤸 [Inicio rápido](#quick-start)
+6. 🧪 [Pruebas](#tests)
+7. 🚀 [Despliegue](#deployment)
+8. 🔧 [Variables de entorno](#environment)
+9. 🧩 [Los otros repos](#related)
+10. 📬 [Contacto](#contact)
+
+## <a name="introduction">✨ Introducción</a>
+
+Cafeta es una red social cerrada: solo entra quien tiene un correo institucional de INTEC. Sus estudiantes publican apuntes y avisos, suben historias, conversan en tiempo real y siguen a sus compañeros, mientras un equipo de administración modera la comunidad desde su propia consola.
+
+Este repositorio es la API que sostiene todo eso. Es un monolito modular en NestJS, con un módulo por dominio, que expone REST bajo `/api/v1`, publica su contrato OpenAPI y empuja mensajes y notificaciones por Socket.io.
+
+Nació como proyecto académico en INTEC y está desplegada en producción. Sus dos reglas de fondo son la trazabilidad (cada acción relevante queda en una bitácora) y la baja lógica: casi nada se borra de verdad, se desactiva.
+
+## <a name="tech-stack">⚙️ Stack</a>
+
+- **[NestJS 12](https://nestjs.com)** en MVC por módulos, con TypeScript strict y ESM sobre **[Node.js 24](https://nodejs.org)**.
+- **[Prisma 7](https://www.prisma.io)** con **[PostgreSQL 17](https://www.postgresql.org)**: Docker en local y [Supabase](https://supabase.com) en producción.
+- **[Socket.io](https://socket.io)** para mensajes y notificaciones en tiempo real.
+- **JWT** con sesiones guardadas en la base, y **bcrypt** para las contraseñas.
+- **[Swagger](https://swagger.io)** con `@nestjs/swagger`: de ese contrato salen los tipos de la web y de la consola.
+- **[Azure Blob Storage](https://azure.microsoft.com/products/storage/blobs)** para los archivos, con [Azurite](https://github.com/Azure/Azurite) en local.
+- **[Sentry](https://sentry.io)** para el monitoreo de errores y **[Nodemailer](https://nodemailer.com)** para los correos.
+- **[Vitest](https://vitest.dev)** y **[Supertest](https://github.com/ladjs/supertest)** para las pruebas; **oxlint** y **Prettier** para lint y formato.
+
+## <a name="features">🔋 Funciones</a>
+
+👉 **Cuentas institucionales**: Registro limitado a los dominios permitidos, inicio y cierre de sesión, recuperación de contraseña por correo y desactivación de la cuenta propia.
+
+👉 **Publicaciones y feed**: Crear, editar, archivar, restaurar y desactivar publicaciones, con un feed paginado por cursor que se puede filtrar por carrera.
+
+👉 **Reacciones, comentarios y guardados**: Cinco tipos de reacción, comentarios editables y una lista personal de publicaciones guardadas.
+
+👉 **Historias**: Duran 24 horas y tienen registro de vistas, reacciones y comentarios.
+
+👉 **Mensajería en tiempo real**: Conversaciones con edición y retiro de mensajes, y marcas de lectura, entregadas por Socket.io.
+
+👉 **Red de contactos**: Seguir usuarios, solicitudes para los perfiles de solo seguidores, bloqueos y tres niveles de privacidad.
+
+👉 **Notificaciones**: Lista con conteo de no leídas, preferencias por usuario y avisos al instante.
+
+👉 **Búsqueda y descubrimiento**: Búsqueda de personas y publicaciones, sugerencias de personas y exploración de contenido.
+
+👉 **Archivos seguros**: El formato se decide por los primeros bytes del archivo, nunca por la extensión. Admite imágenes, MP4, WebM y PDF con límites de tamaño, en un contenedor privado que solo se lee con enlaces firmados.
+
+👉 **Moderación**: Reportes de la comunidad, revisión y resolución por parte de un admin, y sanciones que siempre exigen una nota.
+
+👉 **Consola de administración**: Dashboard de métricas, gestión y verificación de usuarios, anuncios institucionales e informes descargables en CSV.
+
+👉 **Bitácora de auditoría**: Cada acción auditable se registra dentro de la misma transacción del cambio.
+
+👉 **Baja lógica**: Un trigger de base de datos impide borrar de verdad las entidades protegidas, y toda lectura filtra lo desactivado.
+
+👉 **Seguridad por defecto**: Toda ruta exige JWT salvo las marcadas `@Public()`, con validación estricta de entradas, helmet, CORS y límites de peticiones por IP o por usuario.
+
+👉 **Errores uniformes**: Todo error responde `{ statusCode, message, code }`, con un `code` estable en mayúsculas que los frontends traducen para el usuario.
+
+👉 **Monitoreo respetuoso**: Los eventos a Sentry se limpian de datos personales y tienen un tope para que un bucle no agote la cuota.
+
+## <a name="project-structure">🗂️ Estructura</a>
+
+```text
+.github/workflows/    CI, despliegue a Azure y semilla de producción
+docker/               Crea la base de pruebas al iniciar PostgreSQL
+infra/                Runbook de producción y scripts de Azure y GitHub
+prisma/               Esquema, migraciones, semilla y creación de admins
+scripts/              Matriz de trazabilidad entre historias y pruebas
+src/
+├── common/           Auditoría, baja lógica, correo, monitoreo, límites y errores
+├── config/           Variables de entorno validadas al arrancar
+├── health/           GET /api/v1/health, con el commit desplegado
+├── modules/          Un módulo por dominio: auth, posts, stories, conversations…
+├── prisma/           Cliente de Prisma compartido
+├── app.setup.ts      Prefijo, validación, helmet, CORS y Swagger
+└── main.ts           Arranque
+test/
+├── acceptance/       Pruebas de aceptación por historia de usuario
+└── *.e2e-spec.ts     Pruebas e2e por dominio
 ```
 
-## Compile and run the project
+## <a name="quick-start">🤸 Inicio rápido</a>
+
+Sigue estos pasos para levantar la API en tu máquina.
+
+**Requisitos**
+
+- [Git](https://git-scm.com/)
+- [Node.js](https://nodejs.org/en) 24 o superior, con npm
+- [Docker](https://www.docker.com/) para PostgreSQL y Azurite
+
+**Clonar el repositorio**
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+git clone https://github.com/hjmnz-dev/cafeta-api.git
+cd cafeta-api
 ```
 
-## Run tests
+**Preparar el entorno**
+
+Copia las variables de ejemplo, levanta las bases y los archivos locales, e instala las dependencias:
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+cp .env.example .env
+npm run db:up
+npm install
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+**Crear las tablas y los datos de demo**
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npx prisma migrate deploy
+npm run db:seed
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+La semilla crea las carreras, un admin y usuarios y publicaciones de demo. El correo del admin y las contraseñas son los de tu `.env`.
 
-## Observability
+**Arrancar**
 
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
+```bash
+npm run start:dev
+```
 
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
+La API queda en [http://localhost:3000/api/v1](http://localhost:3000/api/v1/health) y su documentación en [http://localhost:3000/api/docs](http://localhost:3000/api/docs).
 
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
+## <a name="tests">🧪 Pruebas</a>
 
-## Resources
+```bash
+npm test              # unitarias, junto al código
+npm run test:e2e      # e2e contra la base cafeta_test; necesita npm run db:up
+npm run lint          # revisa todo el repo y falla con cualquier aviso
+npm run format:check  # revisa el formato
+npm run typecheck     # incluye test/, que el build no revisa
+```
 
-Check out a few resources that may come in handy when working with NestJS:
+Antes de las e2e, aplica las migraciones a la base de pruebas:
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observer](https://observer.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+```bash
+DATABASE_URL=postgresql://cafeta:cafeta@localhost:5432/cafeta_test DIRECT_URL=postgresql://cafeta:cafeta@localhost:5432/cafeta_test npx prisma migrate deploy
+```
 
-## Support
+Husky y lint-staged revisan lint, formato y tipos antes de cada commit, y el CI repite todo en cada push y en cada PR.
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+## <a name="deployment">🚀 Despliegue</a>
 
-## Stay in touch
+La API corre en [Azure App Service](https://azure.microsoft.com/products/app-service) (Canada Central) y su base en Supabase. Puedes [comprobar su estado](https://cafeta-api-hj01.azurewebsites.net/api/v1/health) o abrir su [Swagger](https://cafeta-api-hj01.azurewebsites.net/api/docs).
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+Cada push a `main` corre el CI y, solo si todo pasa, el job `deploy`:
 
-## License
+1. Aplica las migraciones con `prisma migrate deploy`. Si fallan, no se sube nada.
+2. Entra a Azure con OIDC, sin contraseñas guardadas en GitHub, y sube el paquete.
+3. Espera a que `/api/v1/health` responda con el commit nuevo.
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Las demás ramas y los PR nunca despliegan. El paso a paso completo, desde crear los recursos hasta rotar secretos, está en el [runbook de producción](infra/README.md).
+
+## <a name="environment">🔧 Variables de entorno</a>
+
+Todas están documentadas en [`.env.example`](.env.example) y se validan al arrancar: si falta una obligatoria, la API no inicia.
+
+| Variable                                                                                | Para qué sirve                                                    |
+| --------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `DATABASE_URL`, `DIRECT_URL`                                                            | Conexión a PostgreSQL de la API y de las migraciones              |
+| `JWT_SECRET`                                                                            | Firma de los tokens, con al menos 32 caracteres                   |
+| `WEB_ORIGIN`, `ADMIN_ORIGIN`                                                            | Orígenes permitidos por CORS                                      |
+| `ALLOWED_EMAIL_DOMAINS`                                                                 | Dominios de correo que se pueden registrar                        |
+| `AUTH_RATE_LIMIT`, `POST_RATE_LIMIT`, `COMMENT_RATE_LIMIT`, `PASSWORD_RESET_RATE_LIMIT` | Límites de peticiones                                             |
+| `AZURE_STORAGE_CONNECTION_STRING`, `AZURE_STORAGE_CONTAINER`                            | Almacenamiento de archivos                                        |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`, `WEB_URL`              | Correo de recuperación; sin ellas, el enlace se escribe en el log |
+| `SENTRY_DSN`                                                                            | Monitoreo de errores; sin él, no se envía nada                    |
+| `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, `SEED_DEMO`, `SEED_DEMO_PASSWORD`            | Solo para `npm run db:seed`                                       |
+
+## <a name="related">🧩 Los otros repos</a>
+
+Cafeta son tres repositorios que se despliegan por separado:
+
+- **[cafeta-api](https://github.com/hjmnz-dev/cafeta-api)**: esta API.
+- **[cafeta-app](https://github.com/hjmnz-dev/cafeta-app)**: la app web del estudiante.
+- **[cafeta-admin-web](https://github.com/hjmnz-dev/cafeta-admin-web)**: la consola de administración.
+
+## <a name="contact">📬 Contacto</a>
+
+**Hamsell Jiménez**
+
+- [GitHub](https://github.com/hjmnz-dev)
+- [LinkedIn](https://www.linkedin.com/in/hamselljimenez)
+- [hamselljimenez@gmail.com](mailto:hamselljimenez@gmail.com)
