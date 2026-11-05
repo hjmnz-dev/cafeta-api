@@ -185,17 +185,17 @@ Las demás ramas y los PR nunca despliegan. El paso a paso completo, desde crear
 
 Todas están documentadas en [`.env.example`](.env.example) y se validan al arrancar: si falta una obligatoria, la API no inicia.
 
-| Variable                                                                                | Para qué sirve                                                    |
-| --------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| `DATABASE_URL`, `DIRECT_URL`                                                            | Conexión a PostgreSQL de la API y de las migraciones              |
-| `JWT_SECRET`                                                                            | Firma de los tokens, con al menos 32 caracteres                   |
-| `WEB_ORIGIN`, `ADMIN_ORIGIN`                                                            | Orígenes permitidos por CORS                                      |
-| `ALLOWED_EMAIL_DOMAINS`                                                                 | Dominios de correo que se pueden registrar                        |
-| `AUTH_RATE_LIMIT`, `POST_RATE_LIMIT`, `COMMENT_RATE_LIMIT`, `PASSWORD_RESET_RATE_LIMIT` | Límites de peticiones                                             |
-| `AZURE_STORAGE_CONNECTION_STRING`, `AZURE_STORAGE_CONTAINER`                            | Almacenamiento de archivos                                        |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`, `WEB_URL`              | Correo de recuperación; sin ellas, el enlace se escribe en el log |
-| `SENTRY_DSN`                                                                            | Monitoreo de errores; sin él, no se envía nada                    |
-| `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, `SEED_DEMO`, `SEED_DEMO_PASSWORD`            | Solo para `npm run db:seed`                                       |
+| Variable                                                                                | Para qué sirve                                                                                                                                                                                                                    |
+| --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`, `DIRECT_URL`                                                            | Conexión a PostgreSQL de la API y de las migraciones                                                                                                                                                                              |
+| `JWT_SECRET`                                                                            | Firma de los tokens, con al menos 32 caracteres                                                                                                                                                                                   |
+| `WEB_ORIGIN`, `ADMIN_ORIGIN`                                                            | Orígenes permitidos por CORS                                                                                                                                                                                                      |
+| `ALLOWED_EMAIL_DOMAINS`                                                                 | Dominios de correo que se pueden registrar                                                                                                                                                                                        |
+| `AUTH_RATE_LIMIT`, `POST_RATE_LIMIT`, `COMMENT_RATE_LIMIT`, `PASSWORD_RESET_RATE_LIMIT` | Límites de peticiones                                                                                                                                                                                                             |
+| `AZURE_STORAGE_CONNECTION_STRING`, `AZURE_STORAGE_CONTAINER`                            | Almacenamiento de archivos                                                                                                                                                                                                        |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`, `WEB_URL`              | Correo de recuperación. Solo se envía si están `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS` y `MAIL_FROM`; `SMTP_PORT` vale 587 por defecto y `WEB_URL`, `WEB_ORIGIN`. Sin SMTP, el enlace se escribe en el log solo fuera de producción |
+| `SENTRY_DSN`                                                                            | Monitoreo de errores; sin él, no se envía nada                                                                                                                                                                                    |
+| `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, `SEED_DEMO`, `SEED_DEMO_PASSWORD`            | Solo para `npm run db:seed`                                                                                                                                                                                                       |
 
 ## <a name="related">🧩 Los otros repos</a>
 
