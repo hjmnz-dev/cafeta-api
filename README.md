@@ -187,17 +187,17 @@ Other branches and pull requests never deploy. The full step-by-step guide, from
 
 They are all documented in [`.env.example`](.env.example) and validated at startup: if a required one is missing, the API won't start.
 
-| Variable                                                                                | Purpose                                                      |
-| --------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| `DATABASE_URL`, `DIRECT_URL`                                                            | PostgreSQL connection for the API and for migrations         |
-| `JWT_SECRET`                                                                            | Token signing key, at least 32 characters                    |
-| `WEB_ORIGIN`, `ADMIN_ORIGIN`                                                            | Origins allowed by CORS                                      |
-| `ALLOWED_EMAIL_DOMAINS`                                                                 | Email domains that can sign up                               |
-| `AUTH_RATE_LIMIT`, `POST_RATE_LIMIT`, `COMMENT_RATE_LIMIT`, `PASSWORD_RESET_RATE_LIMIT` | Rate limits                                                  |
-| `AZURE_STORAGE_CONNECTION_STRING`, `AZURE_STORAGE_CONTAINER`                            | File storage                                                 |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`, `WEB_URL`              | Recovery email; without them, the link is written to the log |
-| `SENTRY_DSN`                                                                            | Error monitoring; without it, nothing is sent                |
-| `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, `SEED_DEMO`, `SEED_DEMO_PASSWORD`            | Only for `npm run db:seed`                                   |
+| Variable                                                                                | Purpose                                                                                                                                                                                                                             |
+| --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`, `DIRECT_URL`                                                            | PostgreSQL connection for the API and for migrations                                                                                                                                                                                |
+| `JWT_SECRET`                                                                            | Token signing key, at least 32 characters                                                                                                                                                                                           |
+| `WEB_ORIGIN`, `ADMIN_ORIGIN`                                                            | Origins allowed by CORS                                                                                                                                                                                                             |
+| `ALLOWED_EMAIL_DOMAINS`                                                                 | Email domains that can sign up                                                                                                                                                                                                      |
+| `AUTH_RATE_LIMIT`, `POST_RATE_LIMIT`, `COMMENT_RATE_LIMIT`, `PASSWORD_RESET_RATE_LIMIT` | Rate limits                                                                                                                                                                                                                         |
+| `AZURE_STORAGE_CONNECTION_STRING`, `AZURE_STORAGE_CONTAINER`                            | File storage                                                                                                                                                                                                                        |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`, `WEB_URL`              | Recovery email. It is sent only when `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS` and `MAIL_FROM` are set; `SMTP_PORT` defaults to 587 and `WEB_URL` to `WEB_ORIGIN`. Without SMTP, the link is written to the log only outside production |
+| `SENTRY_DSN`                                                                            | Error monitoring; without it, nothing is sent                                                                                                                                                                                       |
+| `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, `SEED_DEMO`, `SEED_DEMO_PASSWORD`            | Only for `npm run db:seed`                                                                                                                                                                                                          |
 
 ## <a name="related">🧩 Related Repos</a>
 
