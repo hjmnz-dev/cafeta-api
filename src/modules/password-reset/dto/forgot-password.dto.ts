@@ -2,7 +2,7 @@ import { Transform } from 'class-transformer';
 import { IsEmail, MaxLength } from 'class-validator';
 
 export class ForgotPasswordDto {
-  /** @example 1113672@est.intec.edu.do */
+  /** @example estudiante@est.intec.edu.do */
   @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? value.trim().toLowerCase() : value,
   )

@@ -14,7 +14,7 @@ export class ProfileSummaryDto {
 
 export class CurrentUserDto {
   id: string;
-  /** @example 1113672@est.intec.edu.do */
+  /** @example estudiante@est.intec.edu.do */
   email: string;
   @ApiProperty({ enum: ['STUDENT', 'ADMIN'] })
   role: 'STUDENT' | 'ADMIN';

@@ -8,7 +8,7 @@ Cómo poner Cafeta en internet y mantenerlo ahí. La decisión completa está en
 | Web           | Web App `cafeta-web-<sufijo>` en el mismo plan, con `server.mjs`   | Sin costo extra                       |
 | Consola admin | Web App `cafeta-admin-<sufijo>` en el mismo plan, con `server.mjs` | Sin costo extra                       |
 | Base de datos | Supabase, plan Free (East US)                                      | Gratis (se pausa tras 7 días sin uso) |
-| Despliegue    | GitHub Actions (`ci.yml` de cada repo), entra a Azure con OIDC     | Gratis hasta 2000 minutos al mes      |
+| Despliegue    | GitHub Actions (`ci.yml` de cada repo), entra a Azure con OIDC     | Gratis en repos públicos              |
 
 Todo lo de Azure vive en el grupo `rg-cafeta`, en **Canada Central**: si borras el grupo, se borra todo. El plan B1 se paga con el crédito de Azure for Students.
 
@@ -17,7 +17,7 @@ Todo lo de Azure vive en el grupo `rg-cafeta`, en **Canada Central**: si borras 
 - Una cuenta de Azure for Students activa con tu correo de INTEC.
 - Una cuenta de Supabase.
 - `gh` con sesión iniciada (`gh auth status`).
-- **GitHub Pro en `hjmnz-dev`**. Los tres repos son privados, y GitHub solo da ambientes (`environment: production`) en repos privados con Pro. Con el [Student Developer Pack](https://education.github.com/pack) Pro es gratis. Sin Pro, los jobs `deploy` no pueden usar su ambiente: no sigas y decídelo con `/architect despliegue`.
+- Repos públicos, o privados con GitHub Pro: GitHub solo da ambientes (`environment: production`) en esos dos casos. Con el [Student Developer Pack](https://education.github.com/pack) Pro es gratis.
 
 ### Regiones permitidas
 
@@ -103,13 +103,13 @@ SUFFIX=hj01 bash github-env.sh
 
 Al final lista lo que quedó en cada ambiente:
 
-| Repo               | Variables                                                                                              | Secretos                                                                |
-| ------------------ | ------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
-| `cafeta-api`       | `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_WEBAPP_NAME`, `API_URL`          | `DIRECT_URL`, `DATABASE_URL`, `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` |
-| `cafeta-app`       | Las tres `AZURE_*` de login, `AZURE_WEBAPP_NAME`, `VITE_API_URL` (`API_URL` + `/api/v1`), `PUBLIC_URL` | Ninguno                                                                 |
-| `cafeta-admin-web` | Las tres `AZURE_*` de login, `AZURE_WEBAPP_NAME`, `PUBLIC_URL`                                         | Ninguno                                                                 |
+| Repo               | Variables                                                                 | Secretos                                                                                             |
+| ------------------ | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `cafeta-api`       | `AZURE_WEBAPP_NAME`, `API_URL`                                            | Los tres `AZURE_*` de login, `DIRECT_URL`, `DATABASE_URL`, `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` |
+| `cafeta-app`       | `AZURE_WEBAPP_NAME`, `VITE_API_URL` (`API_URL` + `/api/v1`), `PUBLIC_URL` | Los tres `AZURE_*` de login                                                                          |
+| `cafeta-admin-web` | `AZURE_WEBAPP_NAME`, `PUBLIC_URL`                                         | Los tres `AZURE_*` de login                                                                          |
 
-`SEED_ADMIN_PASSWORD` tiene 12 caracteres o más, única, solo para producción. Si prefieres cargar algo a mano desde tu PC: `gh variable set <NOMBRE> --repo hjmnz-dev/<repo> --env production --body "<valor>"`, y `gh secret set <NOMBRE> --repo hjmnz-dev/<repo> --env production` sin `--body` (te pide el valor sin mostrarlo).
+`AZURE_CLIENT_ID`, `AZURE_TENANT_ID` y `AZURE_SUBSCRIPTION_ID` no dan acceso por sí solos, pero van como secretos para que no salgan en los registros de Actions, que son públicos. `SEED_ADMIN_PASSWORD` tiene 12 caracteres o más, única, solo para producción. Si prefieres cargar algo a mano desde tu PC: `gh variable set <NOMBRE> --repo hjmnz-dev/<repo> --env production --body "<valor>"`, y `gh secret set <NOMBRE> --repo hjmnz-dev/<repo> --env production` sin `--body` (te pide el valor sin mostrarlo).
 
 ## 4. Primer despliegue y semilla
 
@@ -161,7 +161,6 @@ La cadena de conexión lleva la clave de la cuenta: no se imprime ni queda en el
 - En `main` un push nuevo no corta un despliegue en curso: espera y corre después. Si llegan tres pushes seguidos, GitHub descarta el del medio que seguía en espera y despliega el último, que ya lo incluye.
 - **Cuando un cambio toca el contrato, fusiona y despliega primero la API y después la web.** La web nunca debe llamar a un endpoint que producción no tiene.
 - En la API la migración va siempre antes que el código. Si falla, el job se pone en rojo, no se sube nada y la versión anterior sigue en pie.
-- Cada push a `main` en la API gasta unos 8 minutos de Actions. Agrupa cambios cuando puedas.
 - La web y el admin se sirven con `deploy/server.mjs` de su repo: solo `GET` y `HEAD`, nunca sale de `dist/`, recarga las rutas internas con `index.html` y responde 404 a un archivo que no existe. Si un build nuevo emite una extensión que no está en su tabla de tipos, súmala ahí.
 
 ## Volver atrás
