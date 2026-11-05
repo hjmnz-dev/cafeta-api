@@ -1,6 +1,6 @@
 <div align="center">
   <br />
-  <img src="docs/readme/banner.webp" alt="Banner de la API de Cafeta">
+  <img src="docs/readme/banner-en.webp" alt="Cafeta API banner">
   <br />
 
   <div>
@@ -13,118 +13,122 @@
 
   <h3 align="center">Cafeta API</h3>
 
-  <p align="center"><a href="https://cafeta-api-hj01.azurewebsites.net/api/docs">Documentación en vivo (Swagger)</a></p>
+  <p align="center"><a href="https://cafeta-api-hj01.azurewebsites.net/api/docs">Live documentation (Swagger)</a></p>
 
-  <p align="center">El backend de Cafeta, la red social de la comunidad universitaria de INTEC, en República Dominicana.</p>
+  <p align="center">The backend of Cafeta, the social network for the INTEC university community in the Dominican Republic.</p>
+
+  <p align="center"><b>English</b> · <a href="README.es.md">Español</a></p>
 </div>
 
-## 📋 <a name="table">Tabla de contenido</a>
+## 📋 <a name="table">Table of Contents</a>
 
-1. ✨ [Introducción](#introduction)
-2. ⚙️ [Stack](#tech-stack)
-3. 🔋 [Funciones](#features)
-4. 🗂️ [Estructura](#project-structure)
-5. 🤸 [Inicio rápido](#quick-start)
-6. 🧪 [Pruebas](#tests)
-7. 🚀 [Despliegue](#deployment)
-8. 🔧 [Variables de entorno](#environment)
-9. 🧩 [Los otros repos](#related)
-10. 📬 [Contacto](#contact)
+1. ✨ [Introduction](#introduction)
+2. ⚙️ [Tech Stack](#tech-stack)
+3. 🔋 [Features](#features)
+4. 🗂️ [Project Structure](#project-structure)
+5. 🤸 [Quick Start](#quick-start)
+6. 🧪 [Tests](#tests)
+7. 🚀 [Deployment](#deployment)
+8. 🔧 [Environment Variables](#environment)
+9. 🧩 [Related Repos](#related)
+10. 📬 [Contact](#contact)
 
-## <a name="introduction">✨ Introducción</a>
+## <a name="introduction">✨ Introduction</a>
 
-Cafeta es una red social cerrada: solo entra quien tiene un correo institucional de INTEC. Sus estudiantes publican apuntes y avisos, suben historias, conversan en tiempo real y siguen a sus compañeros, mientras un equipo de administración modera la comunidad desde su propia consola.
+Cafeta is a closed social network: only people with an INTEC institutional email can join. Students share notes and announcements, post stories, chat in real time and follow their classmates, while an admin team moderates the community from its own console.
 
-Este repositorio es la API que sostiene todo eso. Es un monolito modular en NestJS, con un módulo por dominio, que expone REST bajo `/api/v1`, publica su contrato OpenAPI y empuja mensajes y notificaciones por Socket.io.
+This repository is the API behind all of that. It is a modular NestJS monolith, with one module per domain, that serves REST under `/api/v1`, publishes its OpenAPI contract and pushes messages and notifications over Socket.io.
 
-Nació como proyecto académico en INTEC y está desplegada en producción. Sus dos reglas de fondo son la trazabilidad (cada acción relevante queda en una bitácora) y la baja lógica: casi nada se borra de verdad, se desactiva.
+It started as an academic project at INTEC and runs in production. Two rules shape it: traceability (every relevant action goes to an audit log) and soft deletion: almost nothing is truly deleted, it is deactivated instead.
 
-## <a name="tech-stack">⚙️ Stack</a>
+The interface, error messages and code comments are in Spanish, the language of its users.
 
-- **[NestJS 12](https://nestjs.com)** en MVC por módulos, con TypeScript strict y ESM sobre **[Node.js 24](https://nodejs.org)**.
-- **[Prisma 7](https://www.prisma.io)** con **[PostgreSQL 17](https://www.postgresql.org)**: Docker en local y [Supabase](https://supabase.com) en producción.
-- **[Socket.io](https://socket.io)** para mensajes y notificaciones en tiempo real.
-- **JWT** con sesiones guardadas en la base, y **bcrypt** para las contraseñas.
-- **[Swagger](https://swagger.io)** con `@nestjs/swagger`: de ese contrato salen los tipos de la web y de la consola.
-- **[Azure Blob Storage](https://azure.microsoft.com/products/storage/blobs)** para los archivos, con [Azurite](https://github.com/Azure/Azurite) en local.
-- **[Sentry](https://sentry.io)** para el monitoreo de errores y **[Nodemailer](https://nodemailer.com)** para los correos.
-- **[Vitest](https://vitest.dev)** y **[Supertest](https://github.com/ladjs/supertest)** para las pruebas; **oxlint** y **Prettier** para lint y formato.
+## <a name="tech-stack">⚙️ Tech Stack</a>
 
-## <a name="features">🔋 Funciones</a>
+- **[NestJS 12](https://nestjs.com)** in a modular MVC layout, with strict TypeScript and ESM on **[Node.js 24](https://nodejs.org)**.
+- **[Prisma 7](https://www.prisma.io)** with **[PostgreSQL 17](https://www.postgresql.org)**: Docker locally and [Supabase](https://supabase.com) in production.
+- **[Socket.io](https://socket.io)** for real-time messages and notifications.
+- **JWT** with sessions stored in the database, and **bcrypt** for passwords.
+- **[Swagger](https://swagger.io)** through `@nestjs/swagger`: the web app and the console generate their types from this contract.
+- **[Azure Blob Storage](https://azure.microsoft.com/products/storage/blobs)** for files, with [Azurite](https://github.com/Azure/Azurite) locally.
+- **[Sentry](https://sentry.io)** for error monitoring and **[Nodemailer](https://nodemailer.com)** for email.
+- **[Vitest](https://vitest.dev)** and **[Supertest](https://github.com/ladjs/supertest)** for tests; **oxlint** and **Prettier** for linting and formatting.
 
-👉 **Cuentas institucionales**: Registro limitado a los dominios permitidos, inicio y cierre de sesión, recuperación de contraseña por correo y desactivación de la cuenta propia.
+## <a name="features">🔋 Features</a>
 
-👉 **Publicaciones y feed**: Crear, editar, archivar, restaurar y desactivar publicaciones, con un feed paginado por cursor que se puede filtrar por carrera.
+👉 **Institutional Accounts**: Sign-up limited to allowed email domains, sign-in and sign-out, password recovery by email and self-service account deactivation.
 
-👉 **Reacciones, comentarios y guardados**: Cinco tipos de reacción, comentarios editables y una lista personal de publicaciones guardadas.
+👉 **Posts and Feed**: Create, edit, archive, restore and deactivate posts, with a cursor-paginated feed that can be filtered by degree program.
 
-👉 **Historias**: Duran 24 horas y tienen registro de vistas, reacciones y comentarios.
+👉 **Reactions, Comments and Saves**: Five reaction types, editable comments and a personal list of saved posts.
 
-👉 **Mensajería en tiempo real**: Conversaciones con edición y retiro de mensajes, y marcas de lectura, entregadas por Socket.io.
+👉 **Stories**: They last 24 hours and track views, reactions and comments.
 
-👉 **Red de contactos**: Seguir usuarios, solicitudes para los perfiles de solo seguidores, bloqueos y tres niveles de privacidad.
+👉 **Real-Time Messaging**: Conversations with message editing and withdrawal, plus read receipts, delivered over Socket.io.
 
-👉 **Notificaciones**: Lista con conteo de no leídas, preferencias por usuario y avisos al instante.
+👉 **Connections**: Follow users, follow requests for followers-only profiles, blocks and three privacy levels.
 
-👉 **Búsqueda y descubrimiento**: Búsqueda de personas y publicaciones, sugerencias de personas y exploración de contenido.
+👉 **Notifications**: A list with an unread count, per-user preferences and instant alerts.
 
-👉 **Archivos seguros**: El formato se decide por los primeros bytes del archivo, nunca por la extensión. Admite imágenes, MP4, WebM y PDF con límites de tamaño, en un contenedor privado que solo se lee con enlaces firmados.
+👉 **Search and Discovery**: Search people and posts, people suggestions and content exploration.
 
-👉 **Moderación**: Reportes de la comunidad, revisión y resolución por parte de un admin, y sanciones que siempre exigen una nota.
+👉 **Safe Uploads**: The file type comes from the file's first bytes, never from its extension. Images, MP4, WebM and PDF are accepted with size limits, in a private container that can only be read through signed links.
 
-👉 **Consola de administración**: Dashboard de métricas, gestión y verificación de usuarios, anuncios institucionales e informes descargables en CSV.
+👉 **Moderation**: Community reports, review and resolution by an admin, and sanctions that always require a note.
 
-👉 **Bitácora de auditoría**: Cada acción auditable se registra dentro de la misma transacción del cambio.
+👉 **Admin Console**: Metrics dashboard, user management and verification, institutional announcements and CSV reports.
 
-👉 **Baja lógica**: Un trigger de base de datos impide borrar de verdad las entidades protegidas, y toda lectura filtra lo desactivado.
+👉 **Audit Log**: Every auditable action is recorded inside the same transaction as the change.
 
-👉 **Seguridad por defecto**: Toda ruta exige JWT salvo las marcadas `@Public()`, con validación estricta de entradas, helmet, CORS y límites de peticiones por IP o por usuario.
+👉 **Soft Deletion**: A database trigger blocks real deletes on protected entities, and every read filters out deactivated rows.
 
-👉 **Errores uniformes**: Todo error responde `{ statusCode, message, code }`, con un `code` estable en mayúsculas que los frontends traducen para el usuario.
+👉 **Secure by Default**: Every route requires a JWT unless marked `@Public()`, with strict input validation, helmet, CORS and rate limits per IP or per user.
 
-👉 **Monitoreo respetuoso**: Los eventos a Sentry se limpian de datos personales y tienen un tope para que un bucle no agote la cuota.
+👉 **Uniform Errors**: Every error returns `{ statusCode, message, code }`, with a stable upper-case `code` that the frontends translate for the user.
 
-## <a name="project-structure">🗂️ Estructura</a>
+👉 **Privacy-Aware Monitoring**: Events sent to Sentry are scrubbed of personal data and capped so a loop can't burn the quota.
+
+## <a name="project-structure">🗂️ Project Structure</a>
 
 ```text
-.github/workflows/    CI, despliegue a Azure y semilla de producción
-docker/               Crea la base de pruebas al iniciar PostgreSQL
-infra/                Runbook de producción y scripts de Azure y GitHub
-prisma/               Esquema, migraciones, semilla y creación de admins
-scripts/              Matriz de trazabilidad entre historias y pruebas
+.github/workflows/    CI, Azure deployment and production seed
+docker/               Creates the test database when PostgreSQL starts
+infra/                Production runbook and Azure and GitHub scripts
+prisma/               Schema, migrations, seed and admin creation
+scripts/              Traceability matrix between user stories and tests
 src/
-├── common/           Auditoría, baja lógica, correo, monitoreo, límites y errores
-├── config/           Variables de entorno validadas al arrancar
-├── health/           GET /api/v1/health, con el commit desplegado
-├── modules/          Un módulo por dominio: auth, posts, stories, conversations…
-├── prisma/           Cliente de Prisma compartido
-├── app.setup.ts      Prefijo, validación, helmet, CORS y Swagger
-└── main.ts           Arranque
+├── common/           Audit, soft deletion, email, monitoring, rate limits and errors
+├── config/           Environment variables validated at startup
+├── health/           GET /api/v1/health, with the deployed commit
+├── modules/          One module per domain: auth, posts, stories, conversations…
+├── prisma/           Shared Prisma client
+├── app.setup.ts      Prefix, validation, helmet, CORS and Swagger
+└── main.ts           Entry point
 test/
-├── acceptance/       Pruebas de aceptación por historia de usuario
-└── *.e2e-spec.ts     Pruebas e2e por dominio
+├── acceptance/       Acceptance tests per user story
+└── *.e2e-spec.ts     E2E tests per domain
 ```
 
-## <a name="quick-start">🤸 Inicio rápido</a>
+## <a name="quick-start">🤸 Quick Start</a>
 
-Sigue estos pasos para levantar la API en tu máquina.
+Follow these steps to run the API on your machine.
 
-**Requisitos**
+**Prerequisites**
 
 - [Git](https://git-scm.com/)
-- [Node.js](https://nodejs.org/en) 24 o superior, con npm
-- [Docker](https://www.docker.com/) para PostgreSQL y Azurite
+- [Node.js](https://nodejs.org/en) 24 or newer, with npm
+- [Docker](https://www.docker.com/) for PostgreSQL and Azurite
 
-**Clonar el repositorio**
+**Cloning the Repository**
 
 ```bash
 git clone https://github.com/hjmnz-dev/cafeta-api.git
 cd cafeta-api
 ```
 
-**Preparar el entorno**
+**Setting Up**
 
-Copia las variables de ejemplo, levanta las bases y los archivos locales, e instala las dependencias:
+Copy the example variables, start the local databases and file storage, and install the dependencies:
 
 ```bash
 cp .env.example .env
@@ -132,78 +136,78 @@ npm run db:up
 npm install
 ```
 
-**Crear las tablas y los datos de demo**
+**Creating the Tables and Demo Data**
 
 ```bash
 npx prisma migrate deploy
 npm run db:seed
 ```
 
-La semilla crea las carreras, un admin y usuarios y publicaciones de demo. El correo del admin y las contraseñas son los de tu `.env`.
+The seed creates the degree programs, an admin, and demo users and posts. The admin email and the passwords come from your `.env`.
 
-**Arrancar**
+**Running the Project**
 
 ```bash
 npm run start:dev
 ```
 
-La API queda en [http://localhost:3000/api/v1](http://localhost:3000/api/v1/health) y su documentación en [http://localhost:3000/api/docs](http://localhost:3000/api/docs).
+The API runs at [http://localhost:3000/api/v1](http://localhost:3000/api/v1/health) and its documentation at [http://localhost:3000/api/docs](http://localhost:3000/api/docs).
 
-## <a name="tests">🧪 Pruebas</a>
+## <a name="tests">🧪 Tests</a>
 
 ```bash
-npm test              # unitarias, junto al código
-npm run test:e2e      # e2e contra la base cafeta_test; necesita npm run db:up
-npm run lint          # revisa todo el repo y falla con cualquier aviso
-npm run format:check  # revisa el formato
-npm run typecheck     # incluye test/, que el build no revisa
+npm test              # unit tests, next to the code
+npm run test:e2e      # e2e against the cafeta_test database; needs npm run db:up
+npm run lint          # checks the whole repo and fails on any warning
+npm run format:check  # checks formatting
+npm run typecheck     # includes test/, which the build skips
 ```
 
-Antes de las e2e, aplica las migraciones a la base de pruebas:
+Before the e2e tests, apply the migrations to the test database:
 
 ```bash
 DATABASE_URL=postgresql://cafeta:cafeta@localhost:5432/cafeta_test DIRECT_URL=postgresql://cafeta:cafeta@localhost:5432/cafeta_test npx prisma migrate deploy
 ```
 
-Husky y lint-staged revisan lint, formato y tipos antes de cada commit, y el CI repite todo en cada push y en cada PR.
+Husky and lint-staged check linting, formatting and types before every commit, and CI runs everything again on every push and pull request.
 
-## <a name="deployment">🚀 Despliegue</a>
+## <a name="deployment">🚀 Deployment</a>
 
-La API corre en [Azure App Service](https://azure.microsoft.com/products/app-service) (Canada Central) y su base en Supabase. Puedes [comprobar su estado](https://cafeta-api-hj01.azurewebsites.net/api/v1/health) o abrir su [Swagger](https://cafeta-api-hj01.azurewebsites.net/api/docs).
+The API runs on [Azure App Service](https://azure.microsoft.com/products/app-service) (Canada Central) with its database on Supabase. You can [check its status](https://cafeta-api-hj01.azurewebsites.net/api/v1/health) or open its [Swagger](https://cafeta-api-hj01.azurewebsites.net/api/docs).
 
-Cada push a `main` corre el CI y, solo si todo pasa, el job `deploy`:
+Every push to `main` runs CI and, only if everything passes, the `deploy` job:
 
-1. Aplica las migraciones con `prisma migrate deploy`. Si fallan, no se sube nada.
-2. Entra a Azure con OIDC, sin contraseñas guardadas en GitHub, y sube el paquete.
-3. Espera a que `/api/v1/health` responda con el commit nuevo.
+1. Applies the migrations with `prisma migrate deploy`. If they fail, nothing is uploaded.
+2. Signs in to Azure with OIDC, with no passwords stored in GitHub, and uploads the package.
+3. Waits until `/api/v1/health` reports the new commit.
 
-Las demás ramas y los PR nunca despliegan. El paso a paso completo, desde crear los recursos hasta rotar secretos, está en el [runbook de producción](infra/README.md).
+Other branches and pull requests never deploy. The full step-by-step guide, from creating the resources to rotating secrets, is in the [production runbook](infra/README.md) (in Spanish).
 
-## <a name="environment">🔧 Variables de entorno</a>
+## <a name="environment">🔧 Environment Variables</a>
 
-Todas están documentadas en [`.env.example`](.env.example) y se validan al arrancar: si falta una obligatoria, la API no inicia.
+They are all documented in [`.env.example`](.env.example) and validated at startup: if a required one is missing, the API won't start.
 
-| Variable                                                                                | Para qué sirve                                                    |
-| --------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| `DATABASE_URL`, `DIRECT_URL`                                                            | Conexión a PostgreSQL de la API y de las migraciones              |
-| `JWT_SECRET`                                                                            | Firma de los tokens, con al menos 32 caracteres                   |
-| `WEB_ORIGIN`, `ADMIN_ORIGIN`                                                            | Orígenes permitidos por CORS                                      |
-| `ALLOWED_EMAIL_DOMAINS`                                                                 | Dominios de correo que se pueden registrar                        |
-| `AUTH_RATE_LIMIT`, `POST_RATE_LIMIT`, `COMMENT_RATE_LIMIT`, `PASSWORD_RESET_RATE_LIMIT` | Límites de peticiones                                             |
-| `AZURE_STORAGE_CONNECTION_STRING`, `AZURE_STORAGE_CONTAINER`                            | Almacenamiento de archivos                                        |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`, `WEB_URL`              | Correo de recuperación; sin ellas, el enlace se escribe en el log |
-| `SENTRY_DSN`                                                                            | Monitoreo de errores; sin él, no se envía nada                    |
-| `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, `SEED_DEMO`, `SEED_DEMO_PASSWORD`            | Solo para `npm run db:seed`                                       |
+| Variable                                                                                | Purpose                                                      |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `DATABASE_URL`, `DIRECT_URL`                                                            | PostgreSQL connection for the API and for migrations         |
+| `JWT_SECRET`                                                                            | Token signing key, at least 32 characters                    |
+| `WEB_ORIGIN`, `ADMIN_ORIGIN`                                                            | Origins allowed by CORS                                      |
+| `ALLOWED_EMAIL_DOMAINS`                                                                 | Email domains that can sign up                               |
+| `AUTH_RATE_LIMIT`, `POST_RATE_LIMIT`, `COMMENT_RATE_LIMIT`, `PASSWORD_RESET_RATE_LIMIT` | Rate limits                                                  |
+| `AZURE_STORAGE_CONNECTION_STRING`, `AZURE_STORAGE_CONTAINER`                            | File storage                                                 |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`, `WEB_URL`              | Recovery email; without them, the link is written to the log |
+| `SENTRY_DSN`                                                                            | Error monitoring; without it, nothing is sent                |
+| `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, `SEED_DEMO`, `SEED_DEMO_PASSWORD`            | Only for `npm run db:seed`                                   |
 
-## <a name="related">🧩 Los otros repos</a>
+## <a name="related">🧩 Related Repos</a>
 
-Cafeta son tres repositorios que se despliegan por separado:
+Cafeta is made of three repositories that deploy separately:
 
-- **[cafeta-api](https://github.com/hjmnz-dev/cafeta-api)**: esta API.
-- **[cafeta-app](https://github.com/hjmnz-dev/cafeta-app)**: la app web del estudiante.
-- **[cafeta-admin-web](https://github.com/hjmnz-dev/cafeta-admin-web)**: la consola de administración.
+- **[cafeta-api](https://github.com/hjmnz-dev/cafeta-api)**: this API.
+- **[cafeta-app](https://github.com/hjmnz-dev/cafeta-app)**: the student web app.
+- **[cafeta-admin-web](https://github.com/hjmnz-dev/cafeta-admin-web)**: the admin console.
 
-## <a name="contact">📬 Contacto</a>
+## <a name="contact">📬 Contact</a>
 
 **Hamsell Jiménez**
 
