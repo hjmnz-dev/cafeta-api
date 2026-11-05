@@ -64,10 +64,14 @@ echo
 unset CONFIRM
 
 # Las tres entran a Azure con la misma identidad (OIDC); ninguna guarda contraseña ni token.
+# Los ID no dan acceso, pero van como secretos para que no salgan en los registros públicos.
 set_azure_login() {
-  set_var "$1" AZURE_CLIENT_ID "$CLIENT_ID"
-  set_var "$1" AZURE_TENANT_ID "$TENANT_ID"
-  set_var "$1" AZURE_SUBSCRIPTION_ID "$SUB_ID"
+  printf '%s' "$CLIENT_ID" | set_secret "$1" AZURE_CLIENT_ID
+  printf '%s' "$TENANT_ID" | set_secret "$1" AZURE_TENANT_ID
+  printf '%s' "$SUB_ID" | set_secret "$1" AZURE_SUBSCRIPTION_ID
+  for name in AZURE_CLIENT_ID AZURE_TENANT_ID AZURE_SUBSCRIPTION_ID; do
+    gh variable delete "$name" --repo "$1" --env production 2>/dev/null || true
+  done
 }
 
 step "$API_REPO"

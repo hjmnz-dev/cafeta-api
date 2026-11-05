@@ -103,13 +103,13 @@ SUFFIX=hj01 bash github-env.sh
 
 Al final lista lo que quedó en cada ambiente:
 
-| Repo               | Variables                                                                                              | Secretos                                                                |
-| ------------------ | ------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
-| `cafeta-api`       | `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_WEBAPP_NAME`, `API_URL`          | `DIRECT_URL`, `DATABASE_URL`, `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` |
-| `cafeta-app`       | Las tres `AZURE_*` de login, `AZURE_WEBAPP_NAME`, `VITE_API_URL` (`API_URL` + `/api/v1`), `PUBLIC_URL` | Ninguno                                                                 |
-| `cafeta-admin-web` | Las tres `AZURE_*` de login, `AZURE_WEBAPP_NAME`, `PUBLIC_URL`                                         | Ninguno                                                                 |
+| Repo               | Variables                                                                 | Secretos                                                                                             |
+| ------------------ | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `cafeta-api`       | `AZURE_WEBAPP_NAME`, `API_URL`                                            | Los tres `AZURE_*` de login, `DIRECT_URL`, `DATABASE_URL`, `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` |
+| `cafeta-app`       | `AZURE_WEBAPP_NAME`, `VITE_API_URL` (`API_URL` + `/api/v1`), `PUBLIC_URL` | Los tres `AZURE_*` de login                                                                          |
+| `cafeta-admin-web` | `AZURE_WEBAPP_NAME`, `PUBLIC_URL`                                         | Los tres `AZURE_*` de login                                                                          |
 
-`SEED_ADMIN_PASSWORD` tiene 12 caracteres o más, única, solo para producción. Si prefieres cargar algo a mano desde tu PC: `gh variable set <NOMBRE> --repo hjmnz-dev/<repo> --env production --body "<valor>"`, y `gh secret set <NOMBRE> --repo hjmnz-dev/<repo> --env production` sin `--body` (te pide el valor sin mostrarlo).
+`AZURE_CLIENT_ID`, `AZURE_TENANT_ID` y `AZURE_SUBSCRIPTION_ID` no dan acceso por sí solos, pero van como secretos para que no salgan en los registros de Actions, que son públicos. `SEED_ADMIN_PASSWORD` tiene 12 caracteres o más, única, solo para producción. Si prefieres cargar algo a mano desde tu PC: `gh variable set <NOMBRE> --repo hjmnz-dev/<repo> --env production --body "<valor>"`, y `gh secret set <NOMBRE> --repo hjmnz-dev/<repo> --env production` sin `--body` (te pide el valor sin mostrarlo).
 
 ## 4. Primer despliegue y semilla
 
