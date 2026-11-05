@@ -15,7 +15,7 @@ const trimLower = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim().toLowerCase() : value;
 
 export class RegisterDto {
-  /** @example 1113672@est.intec.edu.do */
+  /** @example estudiante@est.intec.edu.do */
   @Transform(trimLower)
   @IsEmail({}, { message: 'email debe ser un correo válido' })
   @MaxLength(254)

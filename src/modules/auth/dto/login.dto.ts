@@ -8,7 +8,7 @@ import {
 } from 'class-validator';
 
 export class LoginDto {
-  /** @example 1113672@est.intec.edu.do */
+  /** @example estudiante@est.intec.edu.do */
   @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? value.trim().toLowerCase() : value,
   )

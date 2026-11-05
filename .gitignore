@@ -44,6 +44,24 @@ lerna-debug.log*
 .env.test.local
 .env.production.local
 .env.local
+.env.*
+!.env.example
+# Solo valores de prueba, sin secretos; lo leen las e2e.
+!.env.test
+
+# Llaves, certificados y perfiles de publicación
+*.pem
+*.key
+*.pfx
+*.p12
+*.PublishSettings
+
+# Volcados de base de datos
+*.dump
+*.backup
+
+# Configuración local de agentes
+.claude/
 
 # temp directory
 .temp
